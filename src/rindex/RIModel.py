@@ -67,15 +67,32 @@ class RIModel:
         """
         if not mask:
             mask = [1] * len(context)
-        for word, weight in zip(context, mask):
+        # für jedes word im Kontext wird dessen IndexVector auf den Kontextvektor
+        # addiert. Der Vektor bezieht sich im default-Fall auf das 1. Wort.
+        #
+        # - create Hash for context
+        # - seed
+        # - addiere den erzeugten IndexVector aus dem Kontext
+        #   auf den ContextVector des festlegen Wortes
+        # -> das mit dem weight geht dann nicht.
+        ## maske kann in der funktion darüber implementiert werden
+
+        if context[index] not in self.ContextVectors.keys():
+            self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
+    
+        self.ContextVectors[context[index]] = self.iv.createIndexVectorFromContext(context)
+            
+            
+        # for word, weight in zip(context, mask):
         
-            if word == context[index]:
-                continue
-            if word not in self.index_memory.keys():
-                                self.index_memory[word] = self.iv.createIndexVectorFromContext([word])
-            if context[index] not in self.ContextVectors.keys():
-                                self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
-            self.ContextVectors[context[index]] += self.index_memory[word] * weight
+        #     if word == context[index]:
+        #         continue
+        #     if word not in self.index_memory.keys():
+        #         ## schritt kann entfallen
+        #                         self.index_memory[word] = self.iv.createIndexVectorFromContext([word])
+        #     if context[index] not in self.ContextVectors.keys():
+        #                         self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
+        #     self.ContextVectors[context[index]] += self.index_memory[word] * weight
 
 
 
@@ -133,9 +150,8 @@ class RIModel:
         i = 0
         for key in self.ContextVectors.keys():                
             if key != word:
-                sim = self.getJSD(word,key)                
-                if sim != 0:
-                    print(sim)
+                sim = self.getSimilarityCos(word,key)                
+
                 if i == count:
                     break
                 if sim > thres and i < count:
@@ -245,8 +261,8 @@ def main():
     # for key in r.index_memory.keys():
     #     print(key, ":\t", r.index_memory[key].toarray())
 
-    r.getJSD("hello", "parks")
-    ## r.isSimilarTo(word = "hello", thres = 0.1,count = 10)
+    #r.getJSD("hello", "parks")
+    r.isSimilarTo(word = "the", thres = 0.1,count = 10)
     # writeModelToFile(r, 'testModel.pkl')
     #rmi = loadModelFromFile('testModel.pkl')
     #print(rmi.getSimilarityCos("hello","the"))

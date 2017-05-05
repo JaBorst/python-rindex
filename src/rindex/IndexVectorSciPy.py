@@ -9,7 +9,7 @@ import nltk
 ## :8 because seeding allows only 'small' values
 ## looks like we don't nee this. have to check wether hash-function is the same
 ## on every system!
-string_to_hash = lambda input: int(hashlib.md5(input.encode('utf-8')).hexdigest()[:8],16)
+string_to_hash = lambda input: int(hashlib.md5(input.encode('utf-8')).hexdigest()[:4],16)
 
 ## it looks like the usual hash-function generates new values every time.
 #tuple_to_hash = lambda input: hash(tuple(input)) % 4294967295
@@ -35,7 +35,6 @@ class IndexVector:
         self.prob_zero = (self.dim-self.n)/self.dim
         self.prob_minus = self.prob_plus = (self.n/self.dim)/2
 
-
             
     def createIndexVectorFromContext(self, context=[]):
         """
@@ -46,13 +45,13 @@ class IndexVector:
             :param context[]:
         """
         ## summieren des "gekappten" hashs
-        self.vec = sp.csr_matrix((self.dim,1))
+        ## wird trotzdem zu groß. 'ein string' ist auch keine lösung @todo
+        sumOfSeeds = 0.0000
         for word in context:
-            np.random.seed(string_to_hash(word))
-            ## Offensichtlich hatte ich das doch nicht ganz verstanden:
-            ## Jedes Element wird mit einer Wahrscheinlichkeit ausgewählt.
-            ## -> funktioniert natürlich trotzdem.
-            self.vec += sp.csr_matrix(np.random.choice([0, 1, -1], size=(self.dim,1),
+            sumOfSeeds += string_to_hash(word)
+
+        np.random.seed(int(sumOfSeeds))
+        self.vec = sp.csr_matrix(np.random.choice([0, 1, -1], size=(self.dim,1),
                                                   p=[self.prob_zero, self.prob_plus, self.prob_minus]))
         return self.vec
 
