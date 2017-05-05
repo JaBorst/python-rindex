@@ -44,7 +44,16 @@ class RIModel:
         self.k = k
         self.iv = IndexVec.IndexVector(dim, k)
 
+    def writeModelToFile(self):
+        filepath = "/home/tobias/Dokumente/saved_context_vectors/"
+        filename = filepath+ "d"+str(self.dim)+"k"+str(self.k)+".pkl"
+        print(filename)
+        with open(filename, 'wb') as output:
+            pickle.dump(self.ContextVectors, output)
 
+    def loadModelFromFile(self, filename):
+        with open(filename, 'rb') as inputFile:
+            self.ContextVectors = pickle.load(inputFile)
 
     def addDocument(self,context=[]):
         """     Takes the Context array as the context of its entries and each element of the array as word
@@ -69,18 +78,17 @@ class RIModel:
             mask = [1] * len(context)
         # für jedes word im Kontext wird dessen IndexVector auf den Kontextvektor
         # addiert. Der Vektor bezieht sich im default-Fall auf das 1. Wort.
-        #
-        # - create Hash for context
-        # - seed
-        # - addiere den erzeugten IndexVector aus dem Kontext
-        #   auf den ContextVector des festlegen Wortes
-        # -> das mit dem weight geht dann nicht.
+
         ## maske kann in der funktion darüber implementiert werden
+        ## frage: bezieht sich das word im context auf sich selbst?
 
         if context[index] not in self.ContextVectors.keys():
             self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
-    
-        self.ContextVectors[context[index]] = self.iv.createIndexVectorFromContext(context)
+
+        ## add everything but the word at index to the contextVector beeing
+        ## created.
+        rest = context[:index] + context[index+1:]
+        self.ContextVectors[context[index]] += self.iv.createIndexVectorFromContext(rest)
             
             
         # for word, weight in zip(context, mask):
@@ -106,27 +114,25 @@ class RIModel:
          ## 1- ist bei mir so, kann man aber auch einfach ändern.
          return(1-spatial.distance.cosine(self.ContextVectors[word1].toarray(),self.ContextVectors[word2].toarray()))
     
-    def getJSD(self, word1, word2):
-        ## Das is irgenwie Käse. Außerdem bekomme ich grundsätzlich
-        ## inf be entropy heraus.
+    # def getJSD(self, word1, word2):
+    #     ## Das is irgenwie Käse. Außerdem bekomme ich grundsätzlich
+    #     ## inf be entropy heraus.
 
-        P = self.ContextVectors[word1].toarray().transpose()[0]
-        Q = self.ContextVectors[word2].toarray().transpose()[0]
+    #     P = self.ContextVectors[word1].toarray().transpose()[0]
+    #     Q = self.ContextVectors[word2].toarray().transpose()[0]
 
-        ## Wie bekomme ich eine distribution von P,Q?
-        _P = fix_vec(P / norm(P, ord=1))
-        _Q = fix_vec(Q / norm(Q, ord=1))
+    #     ## Wie bekomme ich eine distribution von P,Q?
+    #     _P = fix_vec(P / norm(P, ord=1))
+    #     _Q = fix_vec(Q / norm(Q, ord=1))
 
-        #_M = 0.5 * (_P + _Q)
-        _M = (np.asarray(_P)+np.asarray(_Q)) * 0.5
-
-
-        print(entropy(_Q,_M))
-        # print array with seps
-        #print(','.join(map(str,_M)))
+    #     #_M = 0.5 * (_P + _Q)
+    #     _M = (np.asarray(_P)+np.asarray(_Q)) * 0.5
+    #     print(entropy(_Q,_M))
+    #     # print array with seps
+    #     #print(','.join(map(str,_M)))
         
-        ## sqrt for distance, 1- for simularity
-        return (0.5 * (entropy(_P, _M) + entropy(_Q, _M)))
+    #     ## sqrt for distance, 1- for simularity
+    #     return (0.5 * (entropy(_P, _M) + entropy(_Q, _M)))
 
      
     def isSimilarTo(self, word = "", thres = 0.9,count = 10):
@@ -148,15 +154,21 @@ class RIModel:
             print("Word not in context")
             return
         i = 0
+        maxSim = 0.0
+        maxSimWord = ""
         for key in self.ContextVectors.keys():                
             if key != word:
-                sim = self.getSimilarityCos(word,key)                
-
-                if i == count:
-                    break
-                if sim > thres and i < count:
-                    print(key,sim)
-                    i += 1
+                sim = self.getSimilarityCos(word,key)
+                if sim > maxSim:
+                    ## to search for max- simularity
+                    maxSim = sim
+                    maxSimWord= key
+                # if i == count:
+                #     break
+                # if sim > thres and i < count:
+                #     print(key,sim)
+                #     i += 1
+        print(maxSimWord, maxSim)
 
 
                     
@@ -223,9 +235,11 @@ class RIModel:
                     
 def main():
     """Main function if the Module gets executed"""
-    r = RIModel(100, 3)
+    dim = 1000
+    k = 3
+    r = RIModel(dim, k)
     r.addContext(["hello", "world", "damn"])
-    ## gleiches doc + randomVektor des Dokuments (?)
+
     r.addContext(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
     r.addContext(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
     r.addContext(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
@@ -243,29 +257,16 @@ def main():
     r.addContext(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])    
     r.addContext(["parks", "are", "shitty"], index=0, mask=[0, 0.5, 0.5])
     
-
-  #   vals = r.ContextVectors.values()
-  #   largeMatrix = sp.csr_matrix((len(vals),50))    
-  #   i = 0
-  #   for val in vals:
-  #       """
-  #       SparseEfficiencyWarning: Changing the sparsity structure of a csr_matrix is expensive. lil_matrix is more efficient.
-  # SparseEfficiencyWarning)
-  #       """
-  #       largeMatrix[i] = val.transpose()
-  #       i += 1
-                   
-  #   print(largeMatrix)
-
+    # r.writeModelToFile()
+    # rmi = RIModel(dim, 3)
+    # filename = "/home/tobias/Dokumente/saved_context_vectors/d100k3.pkl"
+    # rmi.loadModelFromFile(filename)
     
-    # for key in r.index_memory.keys():
-    #     print(key, ":\t", r.index_memory[key].toarray())
 
     #r.getJSD("hello", "parks")
-    r.isSimilarTo(word = "the", thres = 0.1,count = 10)
-    # writeModelToFile(r, 'testModel.pkl')
-    #rmi = loadModelFromFile('testModel.pkl')
-    #print(rmi.getSimilarityCos("hello","the"))
+    r.isSimilarTo(word = "hello", thres = 0.1,count = 10)
+
+
     
         
 if __name__ == "__main__":
