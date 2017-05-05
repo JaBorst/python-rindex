@@ -7,9 +7,7 @@ import os
 
 import IndexVectorSciPy as IndexVec
 from RIModel import RIModel
-## im Moment nur als Funktionen vorhanden.
-from RIModel import writeModelToFile
-from RIModel import loadModelFromFile
+
 
 
 
@@ -46,32 +44,49 @@ def analyzeFilebySentence(filename, rmi):
     rmi.writeModelToFile()
 
         
-# def analyzeFilebyContext(filename, rmi, contextSize = 2):
+def analyzeFilebyContext(filename, rmi, contextSize = 2):
 
-#     with open(filename) as fin:
-#         text = fin.read()
-#     content = w_tokenize(text)
+    with open(filename) as fin:
+        text = fin.read()
+    content = s_tokenize(text)
 
-#     start = time.time()
-#     size = len(content)
-#     for i in range(len(content)):
-#         print("\r%f %%" % (100*i/size), end="")        
-#         word = content[i] ## scheine ich zu vergessen...
-#         context = []
-#         for j in range(1,contextSize+1):
-#             try:
-#                 context.append(content[j+i])
-#                 i += 1 ## without 'window'
-#             except:
-#                 pass
-#         try:
-#             rmi.addContext(context, index = 0)
-#         except:
-#             print(context)
-#     print(time.time()-start)
+    size = len(content)
 
-#     writeModelToFile(rmi.ContextVectors, 'c2_ContextVectors.pkl')  
-#     writeModelToFile(rmi.index_memory, 'c2_index_memory.pkl')
+    i = 0
+
+    for sentence in content:
+
+        if i%100 == 0:
+            print("\r%f %%" % (100*i/size), end="")
+
+        ## man kann natürlich auch hier das 1. wort rausnehmen
+        ## für jedes wort
+        
+        sent = clean_word_seq(w_tokenize(sentence))
+        try:
+            for j in range(len(sent)):
+                context = []
+                ## schnappe dir das nächste(n) wort(e), wenn es das gibt
+                for k in range(j, j+contextSize):
+                    try:
+                        context.append(sent[k])
+                    except:
+                        pass
+                ## und füge den Kontext hinzu
+                
+                if len(context):
+                    try:
+                        rmi.addContext(context, index = 0)
+                    except:
+                        pass
+        except:
+            pass            
+        i += 1
+        
+        
+        
+    rmi.writeModelToFile()  
+
 
 
 def main():
@@ -79,20 +94,21 @@ def main():
     filename = '/home/tobias/Dokumente/pyworkspace/rindex/testdata/stateofunion.txt'
 
     dim = 1500
-    k = 10 # number of 1 and -1 
+    k = 3 # number of 1 and -1 
     rmi = RIModel(dim,k)    
-    #analyzeFilebySentence(filename, rmi)
-    filename= "/home/tobias/Dokumente/saved_context_vectors/d1500k10.pkl"
+    #analyzeFilebyContext(filename, rmi, 2)
+    filename= "/home/tobias/Dokumente/saved_context_vectors/d1500k3.pkl"
     rmi.loadModelFromFile(filename)
-    # cv = loadModelFromFile('c2_ContextVectors.pkl')
+
     
     # rmi.ContextVectors = cv
     # # rmi.reduceDimensions(100)
     # #writeModelToFile(rmi.ContextVectors, 'c2_ContextVectors_reduced.pkl')  
     # #rmi.index_memory = im
     
-    rmi.isSimilarTo(word = "president", thres = 0.4, count = 100)
-
+    rmi.isSimilarTo(word = "men", thres = 0.9, count = 100)
+    # for key in rmi.ContextVectors.keys():
+    #     print(key)
 
 
 

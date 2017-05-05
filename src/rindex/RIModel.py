@@ -13,20 +13,8 @@ import IndexVectorSciPy as IndexVec
 
 
 
-"""
-As far as I know pickle saves only class objects and not
-complete objects. We could of course call it as a method of RIModel.
-"""
-def writeModelToFile(rmi, filename):
-    with open(filename, 'wb') as output:
-        pickle.dump(rmi, output)
-def loadModelFromFile(filename):
-    with open(filename, 'rb') as inputFile:
-        return(pickle.load(inputFile))
 fix_vec = lambda input:[(number,number+0.0001)[number == 0.0] for
                         number in input]
-
-
 
 
 class RIModel:
@@ -159,16 +147,16 @@ class RIModel:
         for key in self.ContextVectors.keys():                
             if key != word:
                 sim = self.getSimilarityCos(word,key)
-                if sim > maxSim:
-                    ## to search for max- simularity
-                    maxSim = sim
-                    maxSimWord= key
-                # if i == count:
-                #     break
-                # if sim > thres and i < count:
-                #     print(key,sim)
-                #     i += 1
-        print(maxSimWord, maxSim)
+                # if sim > maxSim:
+                #     ## to search for max- simularity
+                #     maxSim = sim
+                #     maxSimWord= key
+                if i == count:
+                    break
+                if sim > thres and i < count:
+                    print(key,sim)
+                    i += 1
+        #print(maxSimWord, maxSim)
 
 
                     
