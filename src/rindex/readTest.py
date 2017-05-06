@@ -4,14 +4,14 @@ from nltk.tokenize import sent_tokenize as s_tokenize
 import re
 import time
 import os
+import multiprocessing
 
 import IndexVectorSciPy as IndexVec
 from RIModel import RIModel
 
-## should not be here
-from sklearn.random_projection import johnson_lindenstrauss_min_dim
-from sklearn.random_projection import SparseRandomProjection
-import scipy.sparse as sp
+
+
+
 
 def clean_word_seq(context = []):
     ## some trimming
@@ -46,7 +46,7 @@ def analyzeFilebySentence(filename, rmi):
     rmi.writeModelToFile()
 
         
-def analyzeFilebyContext(filename, rmi, contextSize = 2):
+def analyzeFilebyContext(filename, rmi, id ,contextSize = 2):
 
     with open(filename) as fin:
         text = fin.read()
@@ -93,15 +93,16 @@ def analyzeFilebyContext(filename, rmi, contextSize = 2):
 
 
 def getPathsOfFiles(path):
-    list_of_files = {}
+    list_of_files = []
+    i = 0
     for (dirpath, dirnames, filenames) in os.walk(path):
         for filename in filenames:
             if filename.endswith('.txt'): 
-                list_of_files[filename] = os.sep.join([dirpath, filename])
+                list_of_files.append(os.sep.join([dirpath, filename]))
     return list_of_files
 
 ## @todo: anderer name
-def analyzeFilesOfFolder(path):
+def analyzeFilesOfFolder(path, contextSize = 2):
     ## walks through folder and builds a model
     ## ideas:
     ## - add a random (random) vector for each document
@@ -109,54 +110,70 @@ def analyzeFilesOfFolder(path):
     ## - build the models incremental, i.e. one model for
     ##   each file, then add them up -> is this possible?
     ## -> at the moment it's just one model
-    
+
     files = getPathsOfFiles(path)
     rmi = RIModel(dim = 1000, k = 3)
-    i = 0
+    
+    procs = 2
     size = len(files)
-    for filename in files.values():
-        if i%100 == 0:
-            print("\r%f %%" % (100*i/size), end="")
-
-        analyzeFilebyContext(filename, rmi, contextSize = 2)
-        if i%1000 == 0:
-            ## maybe just for testing save the model once in a
-            ## while: could save some nerves.
-            rmi.writeModelToFile()
-        if i > 10:
+    ## möglich, dass das in einem desaster endet. evtl je file ein rimodel
+    for f_i in range(0,len(files),procs):
+        if f_i%100 == 0:
+            print("\r%f %%" % (100*f_i/size), end="")
+        ## schnappt sich immer ein paar files (je nach proc anzahl)j
+        jobs = []
+        for i in range(procs):
+            process = multiprocessing.Process(target=analyzeFilebyContext,
+		                                      args=(files[i], rmi, i,contextSize))
+            jobs.append(process)
+        for j in jobs:
+            j.start()
+        for j in jobs:
+            j.join()
+        if f_i > 3:
             break
-        i += 1
+        
+    # i = 0
+    # size = len(files)
+    # for filename in files.values():
+    #     if i%100 == 0:
+    #         print("\r%f %%" % (100*i/size), end="")
+
+    #     analyzeFilebyContext(filename, rmi, contextSize = 2)
+    #     if i%1000 == 0:
+    #         ## maybe just for testing save the model once in a
+    #         ## while: could save some nerves.
+    #         rmi.writeModelToFile()
+    #     if i > 10:
+    #         break
+    #     i += 1
     rmi.writeModelToFile()  
 
 
 def main():
     path= "/home/tobias/Dokumente/pyworkspace/rindex/testdata/Newspapers/CLOB_RAW"
-    #analyzeFilesOfFolder(path)
+    analyzeFilesOfFolder(path, contextSize=2)
     dim = 1000
     k = 3
     rmi = RIModel(dim ,k)
-    rmi.loadModelFromFile('/home/tobias/Dokumente/saved_context_vectors/d1000k3.pkl')
+    #rmi.loadModelFromFile('/home/tobias/Dokumente/saved_context_vectors/d1000k3.pkl')
     # rmi.isSimilarTo(word = "father", thres = 0.7, count =100)
     # for key in rmi.ContextVectors.keys():
     #     print(key)
 
-    vals = rmi.ContextVectors.values()
-    # Row-based linked list sparse matrix
-    largeMatrix = sp.lil_matrix((len(vals),dim))    
-    i = 0
-    for val in vals:
-        """
-            SparseEfficiencyWarning: Changing the sparsity structure of a csr_matrix is expensive. lil_matrix is more efficient.
-  SparseEfficiencyWarning)
-        """
-        largeMatrix[i] = val.transpose()
-        i += 1
-    print(largeMatrix.shape[1])
-    targetSize = johnson_lindenstrauss_min_dim(largeMatrix.shape[1],0.4)
-    print(targetSize)
-    ## bei steigender wortanzahl lässt sich da sicher was rausholen
-    sparse = SparseRandomProjection(n_components = 10)
-    target = sparse.fit_transform(largeMatrix)
+    # vals = rmi.ContextVectors.values()
+    # # Row-based linked list sparse matrix
+    # largeMatrix = sp.lil_matrix((len(vals),dim))    
+    # i = 0
+    # for val in vals:
+    #     largeMatrix[i] = val.transpose()
+    #     i += 1
+    # print(largeMatrix.shape[1])
+    # targetSize = johnson_lindenstrauss_min_dim(largeMatrix.shape[1],0.4)
+    # print(targetSize)
+    # ## bei steigender wortanzahl lässt sich da sicher was rausholen
+    # sparse = SparseRandomProjection(n_components = 10)
+    # target = sparse.fit_transform(largeMatrix)
     # for t in target:
     #     print(t, end="\n\n")
     
