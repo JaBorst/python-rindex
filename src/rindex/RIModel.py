@@ -6,7 +6,8 @@ from scipy.stats import entropy
 import numpy as np
 from numpy.linalg import norm
 #import random
-
+from sklearn.random_projection import SparseRandomProjection
+from sklearn.random_projection import johnson_lindenstrauss_min_dim
 
 
 import pickle
@@ -153,8 +154,6 @@ class RIModel:
                     ## to search for max- simularity
                     maxSim = sim
                     maxSimWord= key
-                if i == count:
-                    break
                 if sim > thres and i < count:
                     print(key,sim)
                     i += 1
@@ -170,28 +169,32 @@ class RIModel:
         """
 
         # Row-based linked list sparse matrix
-        largeMatrix = sp.lil_matrix((len(vals),dim))    
+        keys = self.ContextVectors.keys()
+        largeMatrix = sp.lil_matrix((len(keys),self.dim))    
         i = 0
-        for val in self.ContextVectors.values():
-            largeMatrix[i] = val.transpose()
-        i += 1
+
+        for key in keys:
+            largeMatrix[i] = self.ContextVectors[key].transpose()       
+            i += 1
 
         ## bei steigender wortanzahl lässt sich da sicher was rausholen
         ## allerdings muss das auch nix heißen. evtl. funktionierts auch
         ## mit weniger.
-        targetSize = johnson_lindenstrauss_min_dim(largeMatrix.shape[1],0.1)
-        print("Reduce ",largeMatrix.shape[1], " to ", targetSize,)
+        #targetSize = johnson_lindenstrauss_min_dim(largeMatrix.shape[1],0.1)
+        targetSize= newDim
+        print("Reduce ",largeMatrix.shape[1], " to ", targetSize)
         
         sparse = SparseRandomProjection(n_components = targetSize)
         target = sparse.fit_transform(largeMatrix)        
-        
-        
-        ## back to dict
+
         cKeys = self.ContextVectors.keys()
+        self.ContextVectors = {}
         i = 0
         for key in cKeys:
-            self.ContextVectors[key] = target[i].transpose()
+            self.ContextVectors[key] = target[i][0]
             i += 1
+
+        self.dim = newDim 
 
                         
     def mostSimilar(self,count= 10, file = None ):

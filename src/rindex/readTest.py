@@ -46,10 +46,15 @@ def analyzeFilebySentence(filename, rmi):
     rmi.writeModelToFile()
 
         
-def analyzeFilebyContext(filename, rmi, id ,contextSize = 2):
+def analyzeFilebyContext(filename, rmi, contextSize = 2):
 
-    with open(filename) as fin:
-        text = fin.read()
+    ## file-decoding festlegen
+    try:
+        with open(filename,'r' ,encoding='utf8') as fin:
+            text = fin.read()
+    except:
+        print("error with ",filename)
+        return
     content = s_tokenize(text)
 
     size = len(content)
@@ -112,54 +117,62 @@ def analyzeFilesOfFolder(path, contextSize = 2):
     ## -> at the moment it's just one model
 
     files = getPathsOfFiles(path)
-    rmi = RIModel(dim = 1000, k = 3)
+    rmi = RIModel(dim = 1500, k = 3)
     
-    procs = 2
-    size = len(files)
-    ## möglich, dass das in einem desaster endet. evtl je file ein rimodel
-    for f_i in range(0,len(files),procs):
-        if f_i%100 == 0:
-            print("\r%f %%" % (100*f_i/size), end="")
-        ## schnappt sich immer ein paar files (je nach proc anzahl)j
-        jobs = []
-        for i in range(procs):
-            process = multiprocessing.Process(target=analyzeFilebyContext,
-		                                      args=(files[i], rmi, i,contextSize))
-            jobs.append(process)
-        for j in jobs:
-            j.start()
-        for j in jobs:
-            j.join()
-        if f_i > 3:
-            break
-        
-    # i = 0
+    # procs = 3
     # size = len(files)
-    # for filename in files.values():
-    #     if i%100 == 0:
-    #         print("\r%f %%" % (100*i/size), end="")
-
-    #     analyzeFilebyContext(filename, rmi, contextSize = 2)
-    #     if i%1000 == 0:
-    #         ## maybe just for testing save the model once in a
-    #         ## while: could save some nerves.
+    # ## möglich, dass das in einem desaster endet. evtl je file ein rimodel
+    # ## kann eigentlich gar nicht gehen. 
+    # for f_i in range(0,len(files),procs):
+    #     if f_i%10 == 0:
+    #         print("\r%f %%" % (100*f_i/size), end="")
+    #     ## schnappt sich immer ein paar files (je nach proc anzahl)j
+    #     jobs = []
+    #     for i in range(procs):
+    #         process = multiprocessing.Process(target=analyzeFilebyContext,
+    #     	                                      args=(files[i], rmi, i,contextSize))
+    #         jobs.append(process)
+    #     for j in jobs:
+    #         j.start()
+    #     for j in jobs:
+    #         j.join()
+    #     # if f_i > 3:
+    #     #     break
+    #     if f_i%50 == 0:
+    #         print("save at ", f_i)
     #         rmi.writeModelToFile()
-    #     if i > 10:
-    #         break
-    #     i += 1
+        
+    i = 0
+    size = len(files)
+    print(size)
+    for filename in files:
+        if i%10 == 0:
+            print("\r%f %%" % (100*i/size), end="")
+
+        analyzeFilebyContext(filename, rmi, contextSize = 2)
+        if i%50 == 0:
+            ## maybe just for testing save the model once in a
+            ## while: could save some nerves.
+            rmi.writeModelToFile()
+        i += 1
     rmi.writeModelToFile()  
 
 
 def main():
-    path= "/home/tobias/Dokumente/pyworkspace/rindex/testdata/Newspapers/CLOB_RAW"
-    analyzeFilesOfFolder(path, contextSize=2)
-    dim = 1000
+    path= "/home/tobias/Dokumente/pyworkspace/rindex/testdata/Newspapers/Crown_RAW"
+    #analyzeFilesOfFolder(path, contextSize=2)
+    dim = 1500
     k = 3
     rmi = RIModel(dim ,k)
-    #rmi.loadModelFromFile('/home/tobias/Dokumente/saved_context_vectors/d1000k3.pkl')
-    # rmi.isSimilarTo(word = "father", thres = 0.7, count =100)
+    rmi.loadModelFromFile('/home/tobias/Dokumente/saved_context_vectors/d10k3.pkl')
+    rmi.isSimilarTo(word = "london", thres = 0.95, count =100)
+    line = 50*"-"
+    print(line)
+    #    rmi.reduceDimensions(newDim =10)# macht noch nix
+
     # for key in rmi.ContextVectors.keys():
     #     print(key)
+    #rmi.writeModelToFile()
 
     # vals = rmi.ContextVectors.values()
     # # Row-based linked list sparse matrix
