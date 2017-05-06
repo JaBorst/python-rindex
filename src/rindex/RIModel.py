@@ -77,20 +77,20 @@ class RIModel:
 
         ## add everything but the word at index to the contextVector beeing
         ## created.
-        rest = context[:index] + context[index+1:]
-        self.ContextVectors[context[index]] += self.iv.createIndexVectorFromContext(rest)
+        # rest = context[:index] + context[index+1:]
+        # self.ContextVectors[context[index]] += self.iv.createIndexVectorFromContext(rest)
             
             
-        # for word, weight in zip(context, mask):
+        for word, weight in zip(context, mask):
         
-        #     if word == context[index]:
-        #         continue
-        #     if word not in self.index_memory.keys():
-        #         ## schritt kann entfallen
-        #                         self.index_memory[word] = self.iv.createIndexVectorFromContext([word])
-        #     if context[index] not in self.ContextVectors.keys():
-        #                         self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
-        #     self.ContextVectors[context[index]] += self.index_memory[word] * weight
+            if word == context[index]:
+                continue
+            if word not in self.index_memory.keys():
+                ## schritt kann entfallen
+                                self.index_memory[word] = self.iv.createIndexVectorFromContext([word])
+            if context[index] not in self.ContextVectors.keys():
+                                self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
+            self.ContextVectors[context[index]] += self.index_memory[word] * weight
 
 
 
@@ -103,7 +103,28 @@ class RIModel:
              """
          ## 1- ist bei mir so, kann man aber auch einfach ändern.
          return(1-spatial.distance.cosine(self.ContextVectors[word1].toarray(),self.ContextVectors[word2].toarray()))
-    
+
+
+    def getSimilarityJaccard(self, word1 = "", word2 = ""):
+        """Calculate the Dice coeffiecient
+        http://nlp.ffzg.hr/data/publications/nljubesi/ljubesic08-comparing.pdf
+        """
+        featureMins = 0
+        featureMax = 0
+        wordVec1 = self.ContextVectors[word1].toarray()
+        wordVec2 = self.ContextVectors[word2].toarray()
+        print(wordVec1)
+        print(wordVec2)
+
+        featureMins = np.sum(np.minimum(wordVec1, wordVec2))
+        featureMax = np.sum(np.maximum(wordVec1, wordVec2))
+
+        print(featureMins)
+        print(featureMax)
+
+        return featureMins/featureMax
+
+
     # def getJSD(self, word1, word2):
     #     ## Das is irgenwie Käse. Außerdem bekomme ich grundsätzlich
     #     ## inf be entropy heraus.
@@ -226,27 +247,27 @@ class RIModel:
                     
 def main():
     """Main function if the Module gets executed"""
-    dim = 1000
+    dim = 10000
     k = 3
     r = RIModel(dim, k)
-    r.addContext(["hello", "world", "damn"])
-
-    r.addContext(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
+    # r.addContext(["hello", "world", "damn"])
+    #
+    # r.addContext(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
     r.addContext(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
+    # r.addContext(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
     r.addContext(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["hello", "damn", "nice"], index=0, mask=[0, 0.5, 0.5])
+    # r.addContext(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
+    # r.addContext(["hello", "damn", "nice"], index=0, mask=[0, 0.5, 0.5])
+    #
+    # r.addContext(["the", "damn", "example"], index=0, mask=[0, 0.5, 0.5])
+    # r.addContext(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
+    r.addContext(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
+    # r.addContext(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
+    # r.addContext(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
+    # r.addContext(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
 
-    r.addContext(["the", "damn", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
-
-    r.addContext(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])    
-    r.addContext(["parks", "are", "shitty"], index=0, mask=[0, 0.5, 0.5])
+    #r.addContext(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
+    #r.addContext(["parks", "are", "shitty"], index=0, mask=[0, 0.5, 0.5])
     
     # r.writeModelToFile()
     # rmi = RIModel(dim, 3)
@@ -254,8 +275,9 @@ def main():
     # rmi.loadModelFromFile(filename)
     
 
-    #r.getJSD("hello", "parks")
-    r.isSimilarTo(word = "hello", thres = 0.1,count = 10)
+    print(r.getSimilarityJaccard("hello", "the"))
+    print(r.getSimilarityCos("hello", "the"))
+    #r.isSimilarTo(word = "hello", thres = 0.1,count = 10)
 
 
     
