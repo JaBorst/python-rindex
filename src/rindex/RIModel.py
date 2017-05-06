@@ -5,7 +5,9 @@ from scipy.stats import entropy
 
 import numpy as np
 from numpy.linalg import norm
-import random
+#import random
+
+
 
 import pickle
 # from rindex
@@ -147,16 +149,16 @@ class RIModel:
         for key in self.ContextVectors.keys():                
             if key != word:
                 sim = self.getSimilarityCos(word,key)
-                # if sim > maxSim:
-                #     ## to search for max- simularity
-                #     maxSim = sim
-                #     maxSimWord= key
+                if sim > maxSim:
+                    ## to search for max- simularity
+                    maxSim = sim
+                    maxSimWord= key
                 if i == count:
                     break
                 if sim > thres and i < count:
                     print(key,sim)
                     i += 1
-        #print(maxSimWord, maxSim)
+        print("MaxSim\t:",maxSimWord, maxSim)
 
 
                     
@@ -166,28 +168,29 @@ class RIModel:
         and multiplies it with a random matrix to reduce dim.
         :param newDim:
         """
-        ## generate a random matrix, self.k could be different.
-        row = np.array([random.randint(0, self.dim-1) for x in range(self.k)])
-        col = np.array([0 for x in range(self.k)])
-        values = np.array([random.choice([-1, 1]) for x in range(self.k)])
-        randMatrix = sp.coo_matrix((values, (row,col)), (self.dim, newDim))
-        ## convert values of context-vectors to one large matrix (?)
-        vals = self.ContextVectors.values()
-        largeMatrix = sp.csr_matrix((len(vals),self.dim))    
+
+        # Row-based linked list sparse matrix
+        largeMatrix = sp.lil_matrix((len(vals),dim))    
         i = 0
-        for val in vals:
-            """
-            SparseEfficiencyWarning: Changing the sparsity structure of a csr_matrix is expensive. lil_matrix is more efficient.
-  SparseEfficiencyWarning)
-            """
+        for val in self.ContextVectors.values():
             largeMatrix[i] = val.transpose()
-            i += 1
-        reducedMatrix = largeMatrix * randMatrix
+        i += 1
+
+        ## bei steigender wortanzahl lässt sich da sicher was rausholen
+        ## allerdings muss das auch nix heißen. evtl. funktionierts auch
+        ## mit weniger.
+        targetSize = johnson_lindenstrauss_min_dim(largeMatrix.shape[1],0.1)
+        print("Reduce ",largeMatrix.shape[1], " to ", targetSize,)
+        
+        sparse = SparseRandomProjection(n_components = targetSize)
+        target = sparse.fit_transform(largeMatrix)        
+        
+        
         ## back to dict
         cKeys = self.ContextVectors.keys()
         i = 0
         for key in cKeys:
-            self.ContextVectors[key] = largeMatrix[i].transpose()
+            self.ContextVectors[key] = target[i].transpose()
             i += 1
 
                         
