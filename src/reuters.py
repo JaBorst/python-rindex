@@ -29,6 +29,8 @@ def createReutersModel():
 
 	for filename in os.listdir(directory):
 		j+=1
+		if j== 10:
+			break
 		if filename.endswith(".json"):
 			file = os.path.join(directory, filename)
 
