@@ -1,20 +1,13 @@
 import itertools
 import scipy.sparse as sp
 from scipy import spatial
-from scipy.stats import entropy
 
-import numpy as np
-from numpy.linalg import norm
-#import random
 from sklearn.random_projection import SparseRandomProjection
 from sklearn.random_projection import johnson_lindenstrauss_min_dim
-
 
 import pickle
 # from rindex
 import IndexVectorSciPy as IndexVec
-
-
 
 fix_vec = lambda input:[(number,number+0.0001)[number == 0.0] for
                         number in input]
@@ -35,18 +28,18 @@ class RIModel:
         self.k = k
         self.iv = IndexVec.IndexVector(dim, k)
 
-    def writeModelToFile(self):
+    def write_model_to_file(self, add_text = ""):
         filepath = "/home/tobias/Dokumente/saved_context_vectors/"
-        filename = filepath+ "d"+str(self.dim)+"k"+str(self.k)+".pkl"
+        filename = filepath+ "d"+str(self.dim)+"k"+str(self.k)+add_text+".pkl"
         print(filename)
         with open(filename, 'wb') as output:
             pickle.dump(self.ContextVectors, output)
 
-    def loadModelFromFile(self, filename):
+    def load_model_from_file(self, filename):
         with open(filename, 'rb') as inputFile:
             self.ContextVectors = pickle.load(inputFile)
 
-    def addDocument(self,context=[]):
+    def add_document(self, context=[]):
         """     Takes the Context array as the context of its entries and each element of the array as word
         """
         for word in context:
@@ -54,10 +47,9 @@ class RIModel:
                 pass
             else:
                                 self.ContextVectors[word] = sp.coo_matrix((self.dim, 1))
-            self.ContextVectors[word] += self.iv.createIndexVectorFromContext(word)
+            self.ContextVectors[word] += self.iv.create_index_vector_from_context(word)
 
-
-    def addContext(self, context = [], index = 0, mask = None):
+    def add_context(self, context = [], index = 0, mask = None):
         """Add a self defined Context for a specifix word with index , possibly with a weight mask
            default: index = 0 ( the first word in the array ) , if no
         mask given all contexts are weighted 1
@@ -79,9 +71,8 @@ class RIModel:
         ## add everything but the word at index to the contextVector beeing
         ## created.
         rest = context[:index] + context[index+1:]
-        self.ContextVectors[context[index]] += self.iv.createIndexVectorFromContext(rest)
-            
-            
+        self.ContextVectors[context[index]] += self.iv.create_index_vector_from_context(rest)
+
         # for word, weight in zip(context, mask):
         
         #     if word == context[index]:
@@ -93,17 +84,15 @@ class RIModel:
         #                         self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
         #     self.ContextVectors[context[index]] += self.index_memory[word] * weight
 
-
-
-    def getSimilarityCos(self, word1, word2):
-         """    Calculate the Cosine-Similarity between the two elements word1 and word2
+    def get_similarity_cos(self, word1, word2):
+        """    Calculate the Cosine-Similarity between the two elements word1 and word2
          word1, word2 must occur in the Model
          :param word1:
          :param word2:
          :return:
              """
-         ## 1- ist bei mir so, kann man aber auch einfach ändern.
-         return(1-spatial.distance.cosine(self.ContextVectors[word1].toarray(),self.ContextVectors[word2].toarray()))
+         # 1- ist bei mir so, kann man aber auch einfach ändern.
+        return 1-spatial.distance.cosine(self.ContextVectors[word1].toarray(),self.ContextVectors[word2].toarray())
     
     # def getJSD(self, word1, word2):
     #     ## Das is irgenwie Käse. Außerdem bekomme ich grundsätzlich
@@ -125,8 +114,7 @@ class RIModel:
     #     ## sqrt for distance, 1- for simularity
     #     return (0.5 * (entropy(_P, _M) + entropy(_Q, _M)))
 
-     
-    def isSimilarTo(self, word = "", thres = 0.9,count = 10):
+    def is_similar_to(self, word ="", thres = 0.9, count = 10):
         """ Returns words with the least distance to the given word.
         The combination of threshold and count can be used e.g. for 
         testing to get a small amount of words (and stop after that).
@@ -145,24 +133,22 @@ class RIModel:
             print("Word not in context")
             return
         i = 0
-        maxSim = 0.0
-        maxSimWord = ""
+        max_sim = 0.0
+        max_sim_word = ""
         for key in self.ContextVectors.keys():                
             if key != word:
-                sim = self.getSimilarityCos(word,key)
-                if sim > maxSim:
+                sim = self.get_similarity_cos(word, key)
+                if sim > max_sim:
                     ## to search for max- simularity
-                    maxSim = sim
-                    maxSimWord= key
+                    max_sim = sim
+                    max_sim_word= key
                 if sim > thres and i < count:
                     print(key,sim)
                     i += 1
-        print("MaxSim\t:",maxSimWord, maxSim)
+        print("MaxSim\t:",max_sim_word, max_sim)
 
 
-                    
-
-    def reduceDimensions(self, newDim = 100):
+    def reduce_dimensions(self, newDim = 100):
         """ Converts contextVectors to large matrix 
         and multiplies it with a random matrix to reduce dim.
         :param newDim:
@@ -170,22 +156,19 @@ class RIModel:
 
         # Row-based linked list sparse matrix
         keys = self.ContextVectors.keys()
-        largeMatrix = sp.lil_matrix((len(keys),self.dim))    
+        large_matrix = sp.lil_matrix((len(keys),self.dim))
         i = 0
 
         for key in keys:
-            largeMatrix[i] = self.ContextVectors[key].transpose()       
+            large_matrix[i] = self.ContextVectors[key].transpose()
             i += 1
 
-        ## bei steigender wortanzahl lässt sich da sicher was rausholen
-        ## allerdings muss das auch nix heißen. evtl. funktionierts auch
-        ## mit weniger.
         #targetSize = johnson_lindenstrauss_min_dim(largeMatrix.shape[1],0.1)
         targetSize= newDim
-        print("Reduce ",largeMatrix.shape[1], " to ", targetSize)
+        print("Reduce ",large_matrix.shape[1], " to ", targetSize)
         
         sparse = SparseRandomProjection(n_components = targetSize)
-        target = sparse.fit_transform(largeMatrix)        
+        target = sparse.fit_transform(large_matrix)
 
         cKeys = self.ContextVectors.keys()
         self.ContextVectors = {}
@@ -196,8 +179,7 @@ class RIModel:
 
         self.dim = newDim 
 
-                        
-    def mostSimilar(self,count= 10, file = None ):
+    def most_similar(self, count=10, file=None):
         """ Compare all words in model. (Takes long Time)
         Isn't that one reason why we need dim-reduction?
         :param count:
@@ -215,7 +197,7 @@ class RIModel:
             i+=1
 
             print("\r%f %%" % (100*i/size), end="")
-            simDic.append([pair[0], pair[1], self.getSimilarityCos(pair[0], pair[1])])
+            simDic.append([pair[0], pair[1], self.get_similarity_cos(pair[0], pair[1])])
         print("Sorting...")
         simDic.sort(key=lambda x: x[2], reverse=True)
         for x in range(count):
@@ -226,30 +208,29 @@ class RIModel:
                     out.write(triple[0] + "\t" + triple[1] + "\t" + str(triple[2]) + "\n")
 
 
-                    
 def main():
     """Main function if the Module gets executed"""
     dim = 1000
     k = 3
     r = RIModel(dim, k)
-    r.addContext(["hello", "world", "damn"])
+    r.add_context(["hello", "world", "damn"])
 
-    r.addContext(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["hello", "damn", "nice"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["hello", "damn", "nice"], index=0, mask=[0, 0.5, 0.5])
 
-    r.addContext(["the", "damn", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
-    r.addContext(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["the", "damn", "example"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
 
-    r.addContext(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])    
-    r.addContext(["parks", "are", "shitty"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
+    r.add_context(["parks", "are", "shitty"], index=0, mask=[0, 0.5, 0.5])
     
     # r.writeModelToFile()
     # rmi = RIModel(dim, 3)
@@ -258,10 +239,8 @@ def main():
     
 
     #r.getJSD("hello", "parks")
-    r.isSimilarTo(word = "hello", thres = 0.1,count = 10)
+    r.is_similar_to(word ="hello", thres = 0.1, count = 10)
 
 
-    
-        
 if __name__ == "__main__":
     main()

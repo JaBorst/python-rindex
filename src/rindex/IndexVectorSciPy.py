@@ -1,42 +1,33 @@
+import hashlib
+
 import numpy as np
 import scipy.sparse as sp
-import random
-import hashlib
-import itertools
-import nltk
-# from scipy.signal.ltisys import dimpulse
 
-## :8 because seeding allows only 'small' values
-## looks like we don't nee this. have to check wether hash-function is the same
-## on every system!
-string_to_hash = lambda input: int(hashlib.md5(input.encode('utf-8')).hexdigest()[:4],16)
-
-## it looks like the usual hash-function generates new values every time.
-#tuple_to_hash = lambda input: hash(tuple(input)) % 4294967295
-
+# :8 because seeding allows only 'small' values
+# looks like we don't nee this. have to check wether hash-function is the same
+# on every system!
+string_to_hash = lambda input: int(hashlib.md5(input.encode('utf-8')).hexdigest()[:4], 16)
 
 
 class IndexVector:
-
     vec = sp.coo_matrix
     randomIndexDB = {}
-    dim = 10 # default
-    # Anzahl -1,1
-    n = 2 # default
+    dim = 10  # default
+    # count of  -1,1
+    n = 2  # default
     prob_minus = prob_plus = prob_zero = 0.0
 
     def __init__(self, dim, n):
         self.dim = dim
         self.n = n
-        self.setProb()
-        
-    def setProb(self):
-        ## only needed for tobi's 'hashing'
-        self.prob_zero = (self.dim-self.n)/self.dim
-        self.prob_minus = self.prob_plus = (self.n/self.dim)/2
+        self.set_prob()
 
-            
-    def createIndexVectorFromContext(self, context=[]):
+    def set_prob(self):
+        # only needed for tobi's 'hashing'
+        self.prob_zero = (self.dim - self.n) / self.dim
+        self.prob_minus = self.prob_plus = (self.n / self.dim) / 2
+
+    def create_index_vector_from_context(self, context=[]):
         """
             Creates an Index-Vector given a context array with words.
             __Notes__:
@@ -51,12 +42,11 @@ class IndexVector:
             sumOfSeeds += string_to_hash(word)
 
         np.random.seed(int(sumOfSeeds))
-        self.vec = sp.csr_matrix(np.random.choice([0, 1, -1], size=(self.dim,1),
+        self.vec = sp.csr_matrix(np.random.choice([0, 1, -1], size=(self.dim, 1),
                                                   p=[self.prob_zero, self.prob_plus, self.prob_minus]))
         return self.vec
 
-        
-    def createIndexVectorRandom(self, context=[]):
+    def create_index_vector_random(self, context=[]):
         ## is this the place where you choose the indexes
         ## or rather how do you save the values?
 
@@ -64,14 +54,13 @@ class IndexVector:
         ## the same seed. After all, I like this method better because we have full
         ## control about the count of -1 and 1s.
         ## -> might be faster, too
-        np.random.seed(string_to_hash(context[0])) ##
-        
-        row = np.array([np.random.randint(0, self.dim-1) for x in range(self.n)])
+        np.random.seed(string_to_hash(context[0]))  ##
+
+        row = np.array([np.random.randint(0, self.dim - 1) for x in range(self.n)])
         col = np.array([0 for x in range(self.n)])
-        
 
         values = np.array([np.random.choice([-1, 1]) for x in range(self.n)])
-        self.vec = sp.coo_matrix((values, (row,col)), (self.dim, 1))
+        self.vec = sp.coo_matrix((values, (row, col)), (self.dim, 1))
         return self.vec
 
     def set(self, dimension=0, n=0):
@@ -80,35 +69,33 @@ class IndexVector:
 
 
 def main():
-    iv = IndexVector(100,3)
-
-    ## festlegen, dass nur float
+    iv = IndexVector(100, 3)
     testSentence = ["I", "like", "Parks", "and", "Recreation"]
 
     for word in testSentence + testSentence:
-        iv.createIndexVectorFromContext([word])
-        print(word,iv.vec)
+        iv.create_index_vector_from_context([word])
+        print(word, iv.vec)
         print()
-    
-    # for i in range(10):
-    #     iv.createIndexVectorRandom([testSentence[0]])
-    #     print(iv.vec)
-    #     print()
-    ##testHash(testSentence)
 
-    
-    # i.createIndexVectorRandom()
-    # print(i.vec)
-    # print()
-    
-    # i.createIndexVectorFromContext(['hello','world'])
-    # print(i.vec)
-    # print()
-    # i.createIndexVectorFromContext(['world','world'])
-    # print(i.vec)
-    # print()
-    # i.createIndexVectorFromContext(['world','hello'])
-    # print(i.vec)
+        # for i in range(10):
+        #     iv.createIndexVectorRandom([testSentence[0]])
+        #     print(iv.vec)
+        #     print()
+        # testHash(testSentence)
+
+        # i.createIndexVectorRandom()
+        # print(i.vec)
+        # print()
+
+        # i.createIndexVectorFromContext(['hello','world'])
+        # print(i.vec)
+        # print()
+        # i.createIndexVectorFromContext(['world','world'])
+        # print(i.vec)
+        # print()
+        # i.createIndexVectorFromContext(['world','hello'])
+        # print(i.vec)
+
 
 if __name__ == "__main__":
     main()

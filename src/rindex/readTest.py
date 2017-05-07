@@ -10,11 +10,8 @@ import IndexVectorSciPy as IndexVec
 from RIModel import RIModel
 
 
-
-
-
 def clean_word_seq(context = []):
-    ## some trimming
+    # some trimming
     if len(context) > 1:
         return([word.lower() for word in context if re.search(r'[a-zA-Z]', word) is not None])
     elif len(context) == 0:
@@ -25,7 +22,8 @@ def clean_word_seq(context = []):
         else:
             return
 
-def analyzeFilebySentence(filename, rmi):
+
+def analyze_file_by_sentence(filename, rmi):
     """
     Simple model which first reads the texts as sentences
     and then takes the first word as context.
@@ -40,15 +38,14 @@ def analyzeFilebySentence(filename, rmi):
         if i%100 == 0:
             print("\r%f %%" % (100*i/size), end="")        
         # take first word of sentence -> index = 0
-        rmi.addContext(w_tokenize(sentence), index = 0)
+        rmi.add_context(w_tokenize(sentence), index = 0)
         i += 1
 
-    rmi.writeModelToFile()
+    rmi.write_model_to_file()
 
         
-def analyzeFilebyContext(filename, rmi, contextSize = 2):
-
-    ## file-decoding festlegen
+def analyze_file_by_context(filename, rmi, contextSize = 2):
+    # file-decoding festlegen
     try:
         with open(filename,'r' ,encoding='utf8') as fin:
             text = fin.read()
@@ -60,7 +57,7 @@ def analyzeFilebyContext(filename, rmi, contextSize = 2):
     size = len(content)
 
     i = 0
-    doc_iv = rmi.iv.createIndexVectorFromContext(filename)
+    doc_iv = rmi.iv.create_index_vector_from_context(filename)
     
     for sentence in content:
 
@@ -84,7 +81,7 @@ def analyzeFilebyContext(filename, rmi, contextSize = 2):
                 
                 if len(context):
                     try:
-                        rmi.addContext(context, index = 0)
+                        rmi.add_context(context, index = 0)
                         ## add something for each doc extrax
                         #rmi.ContextVectors[context[0]] += doc_iv
                     except:
@@ -93,11 +90,8 @@ def analyzeFilebyContext(filename, rmi, contextSize = 2):
             pass            
         i += 1
         
-        
-        
 
-
-def getPathsOfFiles(path):
+def get_paths_of_files(path):
     list_of_files = []
     i = 0
     for (dirpath, dirnames, filenames) in os.walk(path):
@@ -106,17 +100,18 @@ def getPathsOfFiles(path):
                 list_of_files.append(os.sep.join([dirpath, filename]))
     return list_of_files
 
-## @todo: anderer name
-def analyzeFilesOfFolder(path, contextSize = 2):
-    ## walks through folder and builds a model
-    ## ideas:
-    ## - add a random (random) vector for each document
-    ##   to each context in this document
-    ## - build the models incremental, i.e. one model for
-    ##   each file, then add them up -> is this possible?
-    ## -> at the moment it's just one model
 
-    files = getPathsOfFiles(path)
+## @todo: anderer name
+def analyze_files_of_folder(path, contextSize = 2):
+    # walks through folder and builds a model
+    # ideas:
+    # - add a random (random) vector for each document
+    #   to each context in this document
+    # - build the models incremental, i.e. one model for
+    #   each file, then add them up -> is this possible?
+    # -> at the moment it's just one model
+
+    files = get_paths_of_files(path)
     rmi = RIModel(dim = 1500, k = 3)
     
     # procs = 3
@@ -149,13 +144,30 @@ def analyzeFilesOfFolder(path, contextSize = 2):
         if i%10 == 0:
             print("\r%f %%" % (100*i/size), end="")
 
-        analyzeFilebyContext(filename, rmi, contextSize = 2)
+        analyze_file_by_context(filename, rmi, contextSize = 2)
         if i%50 == 0:
             ## maybe just for testing save the model once in a
             ## while: could save some nerves.
-            rmi.writeModelToFile()
+            rmi.write_model_to_file()
         i += 1
-    rmi.writeModelToFile()  
+    rmi.write_model_to_file()
+
+
+def merge_dicts(d1={}, d2={}):
+    nn = {}
+    for key in d1.keys():
+        if key in d2.keys():
+
+            nn[key] = d1[key]+d2[key]
+        else:
+            nn[key] = d1[key]
+    for key in d2.keys():
+        if key not in d1.keys():
+            nn[key] = d2[key]
+    rim = RIModel(dim=1500,k=3)
+    rim.ContextVectors = nn
+    rim.write_model_to_file("merge")
+    print("finished merging")
 
 
 def main():
@@ -164,15 +176,16 @@ def main():
     dim = 1500
     k = 3
     rmi = RIModel(dim ,k)
-    rmi.loadModelFromFile('/home/tobias/Dokumente/saved_context_vectors/d10k3.pkl')
-    rmi.isSimilarTo(word = "london", thres = 0.95, count =100)
-    line = 50*"-"
-    print(line)
-    #    rmi.reduceDimensions(newDim =10)# macht noch nix
+    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/d100k3merge_reduced.pkl')
+
+    rmi.is_similar_to(word ="london", thres = 0.95, count =10)
+    # line = 50*"-"
+    # print(line)
+    #rmi.reduce_dimensions(newDim =100)# macht noch nix
+    #rmi.write_model_to_file("merge_reduced")
 
     # for key in rmi.ContextVectors.keys():
     #     print(key)
-    #rmi.writeModelToFile()
 
     # vals = rmi.ContextVectors.values()
     # # Row-based linked list sparse matrix
@@ -184,7 +197,7 @@ def main():
     # print(largeMatrix.shape[1])
     # targetSize = johnson_lindenstrauss_min_dim(largeMatrix.shape[1],0.4)
     # print(targetSize)
-    # ## bei steigender wortanzahl lässt sich da sicher was rausholen
+    # bei steigender wortanzahl lässt sich da sicher was rausholen
     # sparse = SparseRandomProjection(n_components = 10)
     # target = sparse.fit_transform(largeMatrix)
     # for t in target:
@@ -195,25 +208,20 @@ def main():
     # dim = 1500
     # k = 3 # number of 1 and -1 
     # rmi = RIModel(dim,k)    
-    # #analyzeFilebyContext(filename, rmi, 2)
-    ## rmi.writeModelToFile()  
+    # analyzeFilebyContext(filename, rmi, 2)
+    # rmi.writeModelToFile()
     # filename= "/home/tobias/Dokumente/saved_context_vectors/d1500k3.pkl"
     # rmi.loadModelFromFile(filename)
 
-    
-    # # rmi.ContextVectors = cv
-    # # # rmi.reduceDimensions(100)
-    # # #writeModelToFile(rmi.ContextVectors, 'c2_ContextVectors_reduced.pkl')  
-    # # #rmi.index_memory = im
+    # rmi.ContextVectors = cv
+    # rmi.reduceDimensions(100)
+    # writeModelToFile(rmi.ContextVectors, 'c2_ContextVectors_reduced.pkl')
+    # rmi.index_memory = im
     
     # rmi.isSimilarTo(word = "june", thres = 0.8, count = 100)
-    # # for key in rmi.ContextVectors.keys():
-    # #     print(key)
+    # for key in rmi.ContextVectors.keys():
+    #     print(key)
 
-
-
-
-    
 if __name__ == '__main__':
     main()
     
