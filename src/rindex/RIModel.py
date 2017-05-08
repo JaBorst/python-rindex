@@ -4,11 +4,11 @@ from scipy import spatial
 
 from sklearn.random_projection import SparseRandomProjection
 from sklearn.random_projection import johnson_lindenstrauss_min_dim
-
+import numpy as np
 import pickle
-# from rindex
+#from rindex
 import IndexVectorSciPy as IndexVec
-
+import operator
 fix_vec = lambda input:[(number,number+0.0001)[number == 0.0] for
                         number in input]
 
@@ -135,17 +135,20 @@ class RIModel:
         i = 0
         max_sim = 0.0
         max_sim_word = ""
-        for key in self.ContextVectors.keys():                
+
+        sims = {}
+        for key in self.ContextVectors.keys():
             if key != word:
                 sim = self.get_similarity_cos(word, key)
-                if sim > max_sim:
-                    ## to search for max- simularity
-                    max_sim = sim
-                    max_sim_word= key
+                sims[key] = sim
                 if sim > thres and i < count:
-                    print(key,sim)
-                    i += 1
-        print("MaxSim\t:",max_sim_word, max_sim)
+                    print(key, sim)
+                    i+=1
+        n = 10
+        best_n = dict(sorted(sims.items(), key=operator.itemgetter(1), reverse=True)[:n])
+        for word in best_n.keys():
+            print(word,"\t\t", best_n[word])
+
 
 
     def reduce_dimensions(self, newDim = 100):
@@ -158,22 +161,24 @@ class RIModel:
         keys = self.ContextVectors.keys()
         large_matrix = sp.lil_matrix((len(keys),self.dim))
         i = 0
-
         for key in keys:
             large_matrix[i] = self.ContextVectors[key].transpose()
             i += 1
 
         #targetSize = johnson_lindenstrauss_min_dim(largeMatrix.shape[1],0.1)
-        targetSize= newDim
-        print("Reduce ",large_matrix.shape[1], " to ", targetSize)
+        target_size = newDim
+        print("Reduce ",large_matrix.shape[1], " to ", target_size)
         
-        sparse = SparseRandomProjection(n_components = targetSize)
+        sparse = SparseRandomProjection(n_components = target_size)
         target = sparse.fit_transform(large_matrix)
 
-        cKeys = self.ContextVectors.keys()
         self.ContextVectors = {}
         i = 0
-        for key in cKeys:
+        # kann ich sicher sein, dass der richtige vector das
+        # richtige key-wort bekommt?
+        # ->ja, da ich die Vektoren beim Erzeugen der Matrix in der
+        # Reihenfolge abgespeichert habe.
+        for key in keys:
             self.ContextVectors[key] = target[i][0]
             i += 1
 

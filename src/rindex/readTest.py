@@ -4,11 +4,13 @@ from nltk.tokenize import sent_tokenize as s_tokenize
 import re
 import time
 import os
-import multiprocessing
+#import multiprocessing
+import pickle
 
-import IndexVectorSciPy as IndexVec
+#import IndexVectorSciPy as IndexVec
 from RIModel import RIModel
-
+from sklearn.neighbors import KDTree
+import numpy as np
 
 def clean_word_seq(context = []):
     # some trimming
@@ -47,28 +49,33 @@ def analyze_file_by_sentence(filename, rmi):
 def analyze_file_by_context(filename, rmi, contextSize = 2):
     # file-decoding festlegen
     try:
-        with open(filename,'r' ,encoding='utf8') as fin:
+        with open(filename,'r' ,encoding='utf-8') as fin:
             text = fin.read()
     except:
-        print("error with ",filename)
-        return
+        try:
+            with open(filename,'r' ,encoding='iso-8859-1') as fin:
+                text = fin.read()
+        except:
+            print("error with ",filename)
+            return
     content = s_tokenize(text)
 
     size = len(content)
 
     i = 0
     doc_iv = rmi.iv.create_index_vector_from_context(filename)
-    
+
     for sentence in content:
 
-        # if i%100 == 0:
-        #     print("\r%f %%" % (100*i/size), end="")
+        if i%100 == 0:
+            print("\r%f %%" % (100*i/size), end="")
 
         ## man kann natürlich auch hier das 1. wort rausnehmen
         ## für jedes wort
         
         sent = clean_word_seq(w_tokenize(sentence))
         try:
+            # kann auch bis len(sent)-contextSize gehen
             for j in range(len(sent)):
                 context = []
                 ## schnappe dir das nächste(n) wort(e), wenn es das gibt
@@ -102,7 +109,7 @@ def get_paths_of_files(path):
 
 
 ## @todo: anderer name
-def analyze_files_of_folder(path, contextSize = 2):
+def analyze_files_of_folder(path, contextSize = 2, ext = ""):
     # walks through folder and builds a model
     # ideas:
     # - add a random (random) vector for each document
@@ -148,9 +155,9 @@ def analyze_files_of_folder(path, contextSize = 2):
         if i%50 == 0:
             ## maybe just for testing save the model once in a
             ## while: could save some nerves.
-            rmi.write_model_to_file()
+            rmi.write_model_to_file(ext)
         i += 1
-    rmi.write_model_to_file()
+    rmi.write_model_to_file(ext)
 
 
 def merge_dicts(d1={}, d2={}):
@@ -166,23 +173,72 @@ def merge_dicts(d1={}, d2={}):
             nn[key] = d2[key]
     rim = RIModel(dim=1500,k=3)
     rim.ContextVectors = nn
-    rim.write_model_to_file("merge")
+    rim.write_model_to_file("accu")
     print("finished merging")
 
+def to_tree(rim):
+    # should be done !only! with reduced data
+    points = rim.ContextVectors.values()
+    i = 0
+    vals = []
+    for val in points:
+        vals.append(val.toarray()[0])
+        i += 1
+    kdt = KDTree(vals, leaf_size=40, metric='minkowski')
+    filename = "/home/tobias/tree.pkl"
+    with open(filename, 'wb') as output:
+        pickle.dump(kdt, output)
+
+    # lässt mich keine keys abspeichern...
+    # filename = "/home/tobias/keys.pkl"
+    # with open(filename, 'wb') as output:
+    #     pickle.dump(rim.ContextVectors, output)
+    #save keys seperately
 
 def main():
     path= "/home/tobias/Dokumente/pyworkspace/rindex/testdata/Newspapers/Crown_RAW"
     #analyzeFilesOfFolder(path, contextSize=2)
     dim = 1500
     k = 3
-    rmi = RIModel(dim ,k)
-    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/d100k3merge_reduced.pkl')
 
-    rmi.is_similar_to(word ="london", thres = 0.95, count =10)
+    #analyze_files_of_folder("/home/tobias/Downloads/OANC/data/written_1",contextSize=2,ext="written_1")
+    rmi = RIModel(dim ,k)
+    # ist der witz nicht eigentlich, das die abstände +-gleich bleiben sollen
+    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/d100k3spoken.pkl')
+    start = time.time()
+    rmi.is_similar_to(word="man", thres=0.9, count=10)
+    print(time.time()-start)
+
+
+
+    #rim = RIModel(dim, k)
+    #rim.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/d10k3accu.pkl')
+    #to_tree(rim=rim)
+    """
+    keys = [key for key in rim.ContextVectors.keys()]
+    with open("/home/tobias/tree.pkl", 'rb') as inputFile:
+        kdt = pickle.load(inputFile)
+
+    test = "men"
+    # bis jetzt nur der nächste nachbar
+    dist, indices = kdt.query(rim.ContextVectors[test].toarray(), k=10)
+    #index = int(ind)
+    #print(len(keys), ind,keys[index])
+    for ind in indices[0]:
+        print(keys[int(ind)])
+    """
+
+    #merge_dicts(rmi.ContextVectors, rim.ContextVectors)
+
+    # filename = "/home/tobias/Dokumente/pyworkspace/rindex/testdata/stateofunion.txt"
+    # analyze_file_by_context(filename=filename,rmi=rmi,contextSize=2)
+    # rmi.write_model_to_file("state_of_union")
+    # bag of words?
+    #rim.is_similar_to(word="men", thres=0.9, count=100)
     # line = 50*"-"
     # print(line)
-    #rmi.reduce_dimensions(newDim =100)# macht noch nix
-    #rmi.write_model_to_file("merge_reduced")
+    #rmi.reduce_dimensions(newDim =50)
+    #rmi.write_model_to_file("written")
 
     # for key in rmi.ContextVectors.keys():
     #     print(key)
@@ -224,5 +280,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
 
