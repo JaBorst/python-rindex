@@ -168,7 +168,10 @@ class RIModel:
         #targetSize = johnson_lindenstrauss_min_dim(largeMatrix.shape[1],0.1)
         target_size = newDim
         print("Reduce ",large_matrix.shape[1], " to ", target_size)
-        
+
+        """
+            SPARSE_RANDOM_PROJECTION
+        """
         sparse = SparseRandomProjection(n_components = target_size)
         target = sparse.fit_transform(large_matrix)
 

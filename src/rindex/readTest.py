@@ -12,6 +12,11 @@ from RIModel import RIModel
 from sklearn.neighbors import KDTree
 import numpy as np
 
+# multidimensional scaling
+from sklearn import manifold
+import scipy.sparse as sp
+from matplotlib import pyplot as plt
+
 def clean_word_seq(context = []):
     # some trimming
     if len(context) > 1:
@@ -43,7 +48,6 @@ def analyze_file_by_sentence(filename, rmi):
         rmi.add_context(w_tokenize(sentence), index = 0)
         i += 1
 
-    rmi.write_model_to_file()
 
         
 def analyze_file_by_context(filename, rmi, contextSize = 2):
@@ -64,15 +68,12 @@ def analyze_file_by_context(filename, rmi, contextSize = 2):
 
     i = 0
     doc_iv = rmi.iv.create_index_vector_from_context(filename)
-
     for sentence in content:
-
         if i%100 == 0:
             print("\r%f %%" % (100*i/size), end="")
 
         ## man kann natürlich auch hier das 1. wort rausnehmen
         ## für jedes wort
-        
         sent = clean_word_seq(w_tokenize(sentence))
         try:
             # kann auch bis len(sent)-contextSize gehen
@@ -96,7 +97,7 @@ def analyze_file_by_context(filename, rmi, contextSize = 2):
         except:
             pass            
         i += 1
-        
+
 
 def get_paths_of_files(path):
     list_of_files = []
@@ -120,30 +121,7 @@ def analyze_files_of_folder(path, contextSize = 2, ext = ""):
 
     files = get_paths_of_files(path)
     rmi = RIModel(dim = 1500, k = 3)
-    
-    # procs = 3
-    # size = len(files)
-    # ## möglich, dass das in einem desaster endet. evtl je file ein rimodel
-    # ## kann eigentlich gar nicht gehen. 
-    # for f_i in range(0,len(files),procs):
-    #     if f_i%10 == 0:
-    #         print("\r%f %%" % (100*f_i/size), end="")
-    #     ## schnappt sich immer ein paar files (je nach proc anzahl)j
-    #     jobs = []
-    #     for i in range(procs):
-    #         process = multiprocessing.Process(target=analyzeFilebyContext,
-    #     	                                      args=(files[i], rmi, i,contextSize))
-    #         jobs.append(process)
-    #     for j in jobs:
-    #         j.start()
-    #     for j in jobs:
-    #         j.join()
-    #     # if f_i > 3:
-    #     #     break
-    #     if f_i%50 == 0:
-    #         print("save at ", f_i)
-    #         rmi.writeModelToFile()
-        
+
     i = 0
     size = len(files)
     print(size)
@@ -200,17 +178,51 @@ def main():
     #analyzeFilesOfFolder(path, contextSize=2)
     dim = 1500
     k = 3
-
     #analyze_files_of_folder("/home/tobias/Downloads/OANC/data/written_1",contextSize=2,ext="written_1")
     rmi = RIModel(dim ,k)
+    #analyze_file_by_context("/home/tobias/Dokumente/testdata/stateofunion.txt",rmi=rmi,
+    #                        contextSize=5)
+    #rmi.write_model_to_file("sou_5")
     # ist der witz nicht eigentlich, das die abstände +-gleich bleiben sollen
-    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/d100k3spoken.pkl')
-    start = time.time()
-    rmi.is_similar_to(word="man", thres=0.9, count=10)
-    print(time.time()-start)
+    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/clob_crown/d1500k3merge.pkl')
+    #rmi.is_similar_to(word="man", thres=0.9, count=10)
 
+    keys = rmi.ContextVectors.keys()
+    numels = len(keys)
 
+    large_matrix = sp.lil_matrix((numels, rmi.dim))
+    i = 0
+    for key in keys:
+        #print(len(rmi.ContextVectors[key].toarray()))
+        large_matrix[i] = rmi.ContextVectors[key].transpose()
+        i += 1
+        if i == numels:
+            break
+    from sklearn.decomposition import TruncatedSVD
+    svd = TruncatedSVD(n_components=50, n_iter=10, random_state=42)
+    svd.fit(large_matrix)
+    print(svd.explained_variance_ratio_)
+    red_data = svd.transform(large_matrix)
+    print(svd.explained_variance_ratio_.sum())
+    print(svd.explained_variance_)
 
+    # seed = np.random.RandomState(seed=3)
+    # # bei precomputed muss man die dissimilarity vorher berechenen- irgendwie logisch
+    # mds = manifold.MDS(n_components=2, max_iter=30, eps=1e-6, random_state=seed,
+    #                    dissimilarity="euclidean", n_jobs=2, verbose=1)
+    # pos = mds.fit(large_matrix).embedding_
+
+    # with open("/home/tobias/Dokumente/saved_context_vectors/clob_crown/d100k3SVD50.pkl", 'wb') as output:
+    #     pickle.dump(red_data, output)
+
+    """
+    fig = plt.figure(1)
+    ax = plt.axes([0., 0., 1., 1.])
+    s = 100
+    plt.scatter(pos[:, 0], pos[:, 1], color='navy', s=s, lw=0,
+                label='True Position')
+    plt.show()
+    """
     #rim = RIModel(dim, k)
     #rim.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/d10k3accu.pkl')
     #to_tree(rim=rim)
@@ -237,8 +249,8 @@ def main():
     #rim.is_similar_to(word="men", thres=0.9, count=100)
     # line = 50*"-"
     # print(line)
-    #rmi.reduce_dimensions(newDim =50)
-    #rmi.write_model_to_file("written")
+    # rmi.reduce_dimensions(newDim =50)
+    # rmi.write_model_to_file("sou")
 
     # for key in rmi.ContextVectors.keys():
     #     print(key)
