@@ -2,8 +2,6 @@ import itertools
 import scipy.sparse as sp
 from scipy import spatial
 
-from sklearn.random_projection import SparseRandomProjection
-from sklearn.random_projection import johnson_lindenstrauss_min_dim
 import numpy as np
 import pickle
 #from rindex
@@ -21,23 +19,30 @@ class RIModel:
     iv = IndexVec.IndexVector
     dim = 0
     k = 0
-    index_memory = {}
+    #index_memory = {}
+    is_sparse = True
 
     def __init__(self, dim=0, k=0):
         self.dim = dim
         self.k = k
         self.iv = IndexVec.IndexVector(dim, k)
+        self.file_path = "/home/tobias/Dokumente/saved_context_vectors/"
 
     def write_model_to_file(self, add_text = ""):
-        filepath = "/home/tobias/Dokumente/saved_context_vectors/"
-        filename = filepath+ "d"+str(self.dim)+"k"+str(self.k)+add_text+".pkl"
-        print(filename)
+        filename = self.file_path+ "d"+str(self.dim)+"k"+str(self.k)+add_text+".pkl"
+        print("write model to ",filename)
         with open(filename, 'wb') as output:
             pickle.dump(self.ContextVectors, output)
 
     def load_model_from_file(self, filename):
         with open(filename, 'rb') as inputFile:
             self.ContextVectors = pickle.load(inputFile)
+        # get any element and determine if it's sparse or not
+        some_element = self.ContextVectors[next(iter(self.ContextVectors))]
+        if sp.issparse(some_element):
+            self.is_sparse = True
+        else:
+            self.is_sparse = False
 
     def add_document(self, context=[]):
         """     Takes the Context array as the context of its entries and each element of the array as word
@@ -72,9 +77,7 @@ class RIModel:
         ## created.
         rest = context[:index] + context[index+1:]
         self.ContextVectors[context[index]] += self.iv.create_index_vector_from_context(rest)
-
         # for word, weight in zip(context, mask):
-        
         #     if word == context[index]:
         #         continue
         #     if word not in self.index_memory.keys():
@@ -89,40 +92,25 @@ class RIModel:
          word1, word2 must occur in the Model
          :param word1:
          :param word2:
-         :return:
+         :return: cosinus-distance
              """
          # 1- ist bei mir so, kann man aber auch einfach ändern.
-        return 1-spatial.distance.cosine(self.ContextVectors[word1].toarray(),self.ContextVectors[word2].toarray())
+        if self.is_sparse:
+            return 1-spatial.distance.cosine(self.ContextVectors[word1].toarray(),
+                                             self.ContextVectors[word2].toarray())
+        else:
+            return 1 - spatial.distance.cosine(self.ContextVectors[word1],
+                                               self.ContextVectors[word2])
     
-    # def getJSD(self, word1, word2):
-    #     ## Das is irgenwie Käse. Außerdem bekomme ich grundsätzlich
-    #     ## inf be entropy heraus.
-
-    #     P = self.ContextVectors[word1].toarray().transpose()[0]
-    #     Q = self.ContextVectors[word2].toarray().transpose()[0]
-
-    #     ## Wie bekomme ich eine distribution von P,Q?
-    #     _P = fix_vec(P / norm(P, ord=1))
-    #     _Q = fix_vec(Q / norm(Q, ord=1))
-
-    #     #_M = 0.5 * (_P + _Q)
-    #     _M = (np.asarray(_P)+np.asarray(_Q)) * 0.5
-    #     print(entropy(_Q,_M))
-    #     # print array with seps
-    #     #print(','.join(map(str,_M)))
-        
-    #     ## sqrt for distance, 1- for simularity
-    #     return (0.5 * (entropy(_P, _M) + entropy(_Q, _M)))
 
     def is_similar_to(self, word ="", thres = 0.9, count = 10):
         """ Returns words with the least distance to the given word.
         The combination of threshold and count can be used e.g. for 
         testing to get a small amount of words (and stop after that).
-        
         :param word:
         :param thres:
         :param count
-        :return list of words
+        :return list of similar words
         """
         if len(word) == 0:
                return
@@ -133,9 +121,6 @@ class RIModel:
             print("Word not in context")
             return
         i = 0
-        max_sim = 0.0
-        max_sim_word = ""
-
         sims = {}
         for key in self.ContextVectors.keys():
             if key != word:
@@ -143,49 +128,80 @@ class RIModel:
                 sims[key] = sim
                 if sim > thres and i < count:
                     print(key, sim)
-                    i+=1
-        n = 10
-        best_n = dict(sorted(sims.items(), key=operator.itemgetter(1), reverse=True)[:n])
-        for word in best_n.keys():
-            print(word,"\t\t", best_n[word])
+                    i += 1
 
+        # hier geht was schief
+        # if i < count:
+        #     print("\n\n {0} most similar words".format(count) )
+        #     best_n = dict(sorted(sims.items(), key=operator.itemgetter(1), reverse=True)[:count])
+        #     for word in best_n.keys():
+        #         print(word,"\t\t", best_n[word])
 
+    # def getJSD(self, word1, word2):
+    #     ## Das is irgenwie Käse. Außerdem bekomme ich grundsätzlich
+    #     ## inf be entropy heraus.
+    #     P = self.ContextVectors[word1].toarray().transpose()[0]
+    #     Q = self.ContextVectors[word2].toarray().transpose()[0]
+    #     ## Wie bekomme ich eine distribution von P,Q?
+    #     _P = fix_vec(P / norm(P, ord=1))
+    #     _Q = fix_vec(Q / norm(Q, ord=1))
+    #     #_M = 0.5 * (_P + _Q)
+    #     _M = (np.asarray(_P)+np.asarray(_Q)) * 0.5
+    #     print(entropy(_Q,_M))
+    #     # print array with seps
+    #     #print(','.join(map(str,_M)))
+    #     ## sqrt for distance, 1- for simularity
+    #     return (0.5 * (entropy(_P, _M) + entropy(_Q, _M)))
 
-    def reduce_dimensions(self, newDim = 100):
-        """ Converts contextVectors to large matrix 
-        and multiplies it with a random matrix to reduce dim.
-        :param newDim:
-        """
-
-        # Row-based linked list sparse matrix
-        keys = self.ContextVectors.keys()
-        large_matrix = sp.lil_matrix((len(keys),self.dim))
-        i = 0
-        for key in keys:
-            large_matrix[i] = self.ContextVectors[key].transpose()
-            i += 1
-
-        #targetSize = johnson_lindenstrauss_min_dim(largeMatrix.shape[1],0.1)
-        target_size = newDim
-        print("Reduce ",large_matrix.shape[1], " to ", target_size)
-
-        """
-            SPARSE_RANDOM_PROJECTION
-        """
-        sparse = SparseRandomProjection(n_components = target_size)
-        target = sparse.fit_transform(large_matrix)
-
-        self.ContextVectors = {}
-        i = 0
+    def reduce_dimensions(self,method= "random_projection", target_size=100):
         # kann ich sicher sein, dass der richtige vector das
         # richtige key-wort bekommt?
         # ->ja, da ich die Vektoren beim Erzeugen der Matrix in der
         # Reihenfolge abgespeichert habe.
+
+        keys = self.ContextVectors.keys()
+        # Row-based linked list sparse matrix
+        target_martix = sp.lil_matrix((len(keys),self.dim))
+        i = 0
         for key in keys:
-            self.ContextVectors[key] = target[i][0]
+            target_martix[i] = self.ContextVectors[key].transpose()
             i += 1
 
-        self.dim = newDim 
+        print("Reduce ",target_martix.shape[1], " to ", target_size)
+        self.ContextVectors = {} # reset dicct
+        if method == "random_projection":
+            """
+                SPARSE_RANDOM_PROJECTION
+            """
+            print("using SparseRandomProjection...")
+            from sklearn.random_projection import SparseRandomProjection
+            sparse = SparseRandomProjection(n_components = target_martix)
+            red_data = sparse.fit_transform(target_martix)
+            i = 0
+            for key in keys:
+                self.ContextVectors[key] = red_data[i][0]
+                i += 1
+            self.is_sparse = True
+        elif method == "truncated_svd":
+            """
+                TRUNCATED_SVD
+            """
+            from sklearn.decomposition import TruncatedSVD
+            print("using TruncatedSVD...")
+            # 50  seems to be a good value (maybe les)
+            svd = TruncatedSVD(n_components=target_size, n_iter=10, random_state=42)
+            red_data = svd.fit_transform(target_martix)
+            print("sd-sum is:\t", svd.explained_variance_ratio_.sum())
+            i = 0
+            for key in keys:
+                self.ContextVectors[key] = red_data[i]
+                i += 1
+            self.is_sparse = False
+        elif method == "tsne":
+            print("not yet implemented")
+
+        self.dim = target_size
+
 
     def most_similar(self, count=10, file=None):
         """ Compare all words in model. (Takes long Time)
