@@ -161,14 +161,31 @@ class RIModel:
 
         keys = self.ContextVectors.keys()
         # Row-based linked list sparse matrix
-        target_martix = sp.lil_matrix((len(keys),self.dim))
-        i = 0
-        for key in keys:
-            target_martix[i] = self.ContextVectors[key].transpose()
-            i += 1
+        if method == "random_projection" or method == "truncated_svd":
+            target_martix = sp.lil_matrix((len(keys), self.dim))
+            i = 0
+            for key in keys:
+                target_martix[i] = self.ContextVectors[key].transpose()
+                i += 1
 
-        print("Reduce ",target_martix.shape[1], " to ", target_size)
-        self.ContextVectors = {} # reset dicct
+            print("Reduce ", target_martix.shape[1], " to ", target_size)
+
+        elif method == "mds" or method == "tsne":
+            print("bye bye ram (n is set 10 a low value, for demo)...")
+            n = 1000
+
+            target_martix = np.zeros((n, self.dim))
+            i = 0
+
+            print(target_martix.shape)
+            for key in keys:
+                if i == n:
+                    break
+                target_martix[i, :] = self.ContextVectors[key]#.toarray()
+                i += 1
+            print("Reduce ", target_martix.shape[1], " to ", 2)
+
+        self.ContextVectors = {}  # reset dicct
         if method == "random_projection":
             """
                 SPARSE_RANDOM_PROJECTION
@@ -196,9 +213,39 @@ class RIModel:
             for key in keys:
                 self.ContextVectors[key] = red_data[i]
                 i += 1
-            self.is_sparse = False
+            self.is_sparse = True
+        elif method == "mds":
+            """
+                MDS: ist leider recht ineffizient implementiert, evtl. besser bei niedrigen
+                Dimensionen.
+            """
+            from sklearn import manifold
+            print("use mds...good luck with that!")
+            # bei precomputed muss man die dissimilarity vorher berechenen- irgendwie logisch
+            seed = np.random.RandomState(seed=3)
+            mds = manifold.MDS(n_components=2, max_iter=10, eps=1e-6, random_state=seed,
+                            dissimilarity="euclidean", n_jobs=2, verbose=1)
+            red_data = mds.fit_transform(target_martix)#.embedding_
+            i = 0
+            for key in keys:
+                self.ContextVectors[key] = red_data[i]
+                i += 1
+
+            self.is_sparse = True
         elif method == "tsne":
-            print("not yet implemented")
+            from sklearn.manifold import TSNE
+            print("use tsne")
+            model = TSNE(n_components=2, random_state=0, metric='euclidean')
+            np.set_printoptions(suppress=True)
+            red_data = model.fit_transform(target_martix)
+            i = 0
+            for key in keys:
+                if i == n:
+                    break
+                self.ContextVectors[key] = red_data[i]
+                i += 1
+
+            self.is_sparse = True
 
         self.dim = target_size
 

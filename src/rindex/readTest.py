@@ -145,30 +145,22 @@ def to_tree(rim):
     #save keys seperately
 
 def main():
-    path= "/home/tobias/Dokumente/pyworkspace/rindex/testdata/Newspapers/Crown_RAW"
-    #analyzeFilesOfFolder(path, contextSize=2)
-    dim = 1500
+    dim = 50
     k = 3
     rmi = RIModel(dim, k)
+    context_size = 2
     file_source = "/home/tobias/Dokumente/testdata/stateofunion.txt"
     folder_source = "/home/tobias/Downloads/OANC/data/written_1"
 
     #analyze_files_of_folder(path=folder_source,contextSize=2,ext="written_1")
-    #analyze_file_by_context(filename=file_source,rmi=rmi, contextSize=5)
+    #analyze_file_by_context(filename=file_source,rmi=rmi, contextSize=context_size)
     #rmi.write_model_to_file("sou_5")
-    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/d50k3svd_accu.pkl')
+    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/oanc/d50k3svd_written_1.pkl')
+    rmi.reduce_dimensions(method="tsne", target_size=75)
+    #rmi.write_model_to_file("svd_written_1")
 
-    rmi.is_similar_to(word="girl", thres=0.9, count=100)
+    #rmi.is_similar_to(word="man", thres=0.9, count=100)
 
-
-    # # bei precomputed muss man die dissimilarity vorher berechenen- irgendwie logisch
-    # seed = np.random.RandomState(seed=3)
-    # mds = manifold.MDS(n_components=2, max_iter=30, eps=1e-6, random_state=seed,
-    #                    dissimilarity="euclidean", n_jobs=2, verbose=1)
-    # pos = mds.fit(large_matrix).embedding_
-
-    #with open("/home/tobias/Dokumente/saved_context_vectors/clob_crown/d100k3SVD50.pkl", 'wb') as fout:
-    #    pickle.dump(rmi.ContextVectors, fout)
 
 
 
