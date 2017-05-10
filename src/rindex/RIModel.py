@@ -75,8 +75,14 @@ class RIModel:
 
         ## add everything but the word at index to the contextVector beeing
         ## created.
+
+        # could be actually better to keep the word, so we create the IV only once
+
         rest = context[:index] + context[index+1:]
         self.ContextVectors[context[index]] += self.iv.create_index_vector_from_context(rest)
+
+
+
         # for word, weight in zip(context, mask):
         #     if word == context[index]:
         #         continue
@@ -249,6 +255,26 @@ class RIModel:
 
         self.dim = target_size
 
+    def vector_add(self, words =[], isword="" ):
+        """
+        check if sum of words is equal isword
+        :param words: 
+        :param isword: 
+        :return: distance from sum to actual word
+        """
+        if self.is_sparse:
+            iv_sum = sp.csr_matrix((self.dim, 1))
+            for word in words:
+                iv_sum += self.ContextVectors[word]
+            return 1 - spatial.distance.cosine(iv_sum.toarray(),
+                                        self.ContextVectors[isword].toarray())
+        elif not self.is_sparse:
+            iv_sum = np.zeros((self.dim, 1))
+            for word in words:
+                iv_sum += self.ContextVectors[word][0]
+            return spatial.distance.euclidean(iv_sum,
+                                        self.ContextVectors[isword])
+
 
     def most_similar(self, count=10, file=None):
         """ Compare all words in model. (Takes long Time)
@@ -310,8 +336,8 @@ def main():
     
 
     #r.getJSD("hello", "parks")
-    r.is_similar_to(word ="hello", thres = 0.1, count = 10)
-
+    #r.is_similar_to(word ="hello", thres = 0.1, count = 10)
+    print(r.vector_add(words=["the","parks"],isword="hello"))
 
 if __name__ == "__main__":
     main()
