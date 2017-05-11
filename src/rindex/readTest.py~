@@ -1,0 +1,87 @@
+
+from nltk.tokenize import word_tokenize as w_tokenize
+from nltk.tokenize import sent_tokenize as s_tokenize
+import re
+import time
+import os
+
+import IndexVectorSciPy as IndexVec
+from RIModel import RIModel
+## im Moment nur als Funktionen vorhanden.
+from RIModel import writeModelToFile
+from RIModel import loadModelFromFile
+
+
+
+def clean_word_seq(context = []):
+    ## some trimming
+    if len(context) > 1:
+        return([word.lower() for word in context if re.search(r'[a-zA-Z]', word) is not None])
+    elif len(context) == 0:
+        return
+    elif len(context) == 1:
+        if re.search(r'[a-zA-Z]', context[0]) is not None:
+            return context[0].lower()
+        else:
+            return
+
+        
+def analyzeFilebyContext(filename, rmi, contextSize = 2):
+
+    with open(filename) as fin:
+        text = fin.read()
+    content = w_tokenize(text)
+
+    start = time.time()
+    size = len(content)
+    for i in range(len(content)):
+        print("\r%f %%" % (100*i/size), end="")        
+        word = content[i]
+        context = []
+        for j in range(1,contextSize+1):
+            try:
+                context.append(content[j+i])
+                i += 1 ## without 'window'
+            except:
+                pass
+        try:
+            rmi.addContext(context, index = 0)
+        except:
+            print(context)
+    print(time.time()-start)
+    ##... das geht sicher auch besser.
+    writeModelToFile(rmi.ContextVectors, 'c2_ContextVectors.pkl')  
+    writeModelToFile(rmi.index_memory, 'c2_index_memory.pkl')
+
+
+def main():
+    # os.chdir("/home/tobias/Dokumente/pyworkspace/rindex")
+    filename = '/home/tobias/Dokumente/pyworkspace/rindex/testdata/stateofunion.txt'
+
+    dim = 1500
+    k = 10 # number of 1 and -1 
+    rmi = RIModel(dim,k)    
+    # analyzeFilebyContext(filename, rmi, contextSize = 2)
+    
+    cv = loadModelFromFile('c2_ContextVectors.pkl')
+    
+    rmi.ContextVectors = cv
+    # rmi.reduceDimensions(100)
+    #writeModelToFile(rmi.ContextVectors, 'c2_ContextVectors_reduced.pkl')  
+    #rmi.index_memory = im
+    
+    rmi.isSimilarTo(word = "Benjamin", thres = 0.8, count = 100)
+
+    ## rmi.mostSimilar(count = 10)
+    # ## gibt mir die Vornamen der Präsidenten
+    ## rmi.isSimilarTo(word = "Benjamin", thres = 0.7 ,count = 100)
+    ## das funktioniert sehr gut!
+    # rmi.isSimilarTo(word = "Fellow-Citizens", thres = 0.8 ,count = 100)
+
+
+
+    
+if __name__ == '__main__':
+    main()
+    
+
