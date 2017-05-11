@@ -1,1 +1,1 @@
-__all__ = ['IndexVectorSciPy', 'rimodel']
+__all__ = ['IndexVectorSciPy', 'RIModel']

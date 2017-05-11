@@ -68,6 +68,8 @@ class IndexVector:
         self.n = n
 
 
+
+
 def main():
     iv = IndexVector(100, 3)
     testSentence = ["I", "like", "Parks", "and", "Recreation"]
