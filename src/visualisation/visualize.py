@@ -1,3 +1,7 @@
+
+import sys
+sys.path.append('../')
+
 from  rindex import *
 from tsne.tsne import *
 import numpy as np
@@ -11,27 +15,25 @@ import matplotlib.patches as mpatches
 from matplotlib import colors
 import pylab
 
+tmpdir="tmp/"
 
 def tsneOnModel(path="dump.model"):
 
 	print("Loading Model File")
 	r = RIModel.RIModel(100,2)
 	try:
-		r.loadModelFromFile(path)
+		r.load_model_from_file(path)
 	except:
 		print("File not Found")
 		exit()
 
 
-	dim = r.ContextVectors[list(r.ContextVectors.keys())[0]].shape[0]
+	dim = r.dim
 
 
 	print("Dimension: ", dim)
-
 	print("Converting Model to Math array")
 	m = []
-
-
 	for v in r.ContextVectors.values():
 		#print(v)
 		m.append(v.transpose().toarray()[0])
@@ -43,12 +45,12 @@ def tsneOnModel(path="dump.model"):
 
 	print(nm)
 	Y = tsne(X=nm, no_dims=2, perplexity=40.0);
-	with open("reuters.tsne", "wb") as outputTsne:
+	with open(tmpdir + "reuters.tsne", "wb") as outputTsne:
 		pickle.dump(Y,outputTsne)
 
 
 	labels = []
-	with open("reuters.topics", 'rb') as inputFile:
+	with open(tmpdir + "reuters.topics", 'rb') as inputFile:
 		labels = pickle.load(inputFile)
 
 	topicNames= list(set(labels))
@@ -67,7 +69,7 @@ def tsneOnModel(path="dump.model"):
 		colorArray.append(colorMap[e])
 
 	Plot.scatter(x=Y[:, 0], y=Y[:, 1],  c=colorArray)
-	Plot.legend(recs,topicNames,loc=4)
+	Plot.legend(recs,topicNames, loc=4)
 	Plot.show()
 
 
@@ -82,7 +84,7 @@ def plotOnly(path):
 
 
 	labels = []
-	with open("reuters.topics", 'rb') as inputFile:
+	with open(tmpdir + "reuters.topics", 'rb') as inputFile:
 		labels = pickle.load(inputFile)
 
 	topicNames= list(set(labels))

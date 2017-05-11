@@ -1,3 +1,9 @@
+
+import string
+import sys
+sys.path.append('../')
+
+
 from docutils.nodes import topic
 from  rindex import *
 from tsne.tsne import *
@@ -5,6 +11,7 @@ import numpy as np
 import pylab as Plot
 import json
 import os
+import sys
 
 import pickle
 from nltk import word_tokenize
@@ -14,22 +21,22 @@ from nltk.tokenize import sent_tokenize
 from helpers import printProgress
 
 
-import string
 
 directory = "/home/jb/git/reuters-21578-json-master/data/full/"
+tmpdir = "tmp/"
 model = "reuters.model"
 
 translate_table = dict((ord(char), None) for char in string.punctuation)
 stop = set(stopwords.words('english'))
 
 def tokens(body=""):
-	print (body)
+	#print (body)
 	sent_tokenize_list = sent_tokenize(text=body)
 	tokenlist = []
 	for sent in sent_tokenize_list:
 		tokenlist += [i.lower() for i in word_tokenize(sent.translate(translate_table)) if
 		          i.lower() not in stop and i.isalpha()]
-	print("Tokenlist= ",tokenlist)
+	#print("Tokenlist= ",tokenlist)
 	return tokenlist
 
 def createReutersModel():
@@ -69,17 +76,17 @@ def createReutersModel():
 						if len(article.get('topics')) == 1 and (set(["grain", "trade","interest","livestock"]) & set(article.get('topics'))):
 							places.append(article.get('places')[0])
 							topics.append(list(set(["grain", "trade","interest","livestock"]) & set(article.get('topics')))[0])
-							r.addUnit(unit=article['id'], context=tokens(article['body']))
-							break
-			break
+							r.add_unit(unit=article['id'], context=tokens(article['body']))
+							#break
+			#break
 
 			print("done")
 		else:
 			continue
 
-	r.isSimilarTo(word="6006")
+	r.is_similar_to(word="6006")
 
-	r.writeModelToFile(model)
+	r.write_model_to_file(model)
 	with open("reuters.places","wb") as placesOutput:
 		pickle.dump(places, placesOutput)
 	with open("reuters.topics","wb") as topicsOutput:
