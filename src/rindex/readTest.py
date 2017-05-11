@@ -4,13 +4,17 @@ from nltk.tokenize import sent_tokenize as s_tokenize
 import re
 import os
 import pickle
-
+import time
 from RIModel import RIModel
 import numpy as np
 
 
 def clean_word_seq(context = []):
+    """
     # some trimming
+    :param context: 
+    :return: 
+    """
     if len(context) > 1:
         return([word.lower() for word in context if re.search(r'[a-zA-Z]', word) is not None])
     elif len(context) == 0:
@@ -24,7 +28,13 @@ def clean_word_seq(context = []):
 
         
 def analyze_file_by_context(filename, rmi, contextSize = 2):
-    # file-decoding festlegen
+    """
+    
+    :param filename: 
+    :param rmi: 
+    :param contextSize: 
+    :return: 
+    """
     try:
         with open(filename,'r' ,encoding='utf-8') as fin:
             text = fin.read()
@@ -70,6 +80,11 @@ def analyze_file_by_context(filename, rmi, contextSize = 2):
 
 
 def get_paths_of_files(path):
+    """
+    
+    :param path: 
+    :return: 
+    """
     list_of_files = []
     i = 0
     for (dirpath, dirnames, filenames) in os.walk(path):
@@ -81,13 +96,20 @@ def get_paths_of_files(path):
 
 # @todo: anderer name
 def analyze_files_of_folder(path="", contextSize = 2, ext = ""):
-    # walks through folder and builds a model
-    # ideas:
-    # - add a random (random) vector for each document
-    #   to each context in this document
-    # - build the models incremental, i.e. one model for
-    #   each file, then add them up -> is this possible?
-    # -> at the moment it's just one model, also ok
+    """
+    walks through folder and builds a model
+    ideas:
+    - add a random (random) vector for each document
+      to each context in this document
+    - build the models incremental, i.e. one model for
+      each file, then add them up -> is this possible?
+    -> at the moment it's just one model, also ok
+    :param path: 
+    :param contextSize: 
+    :param ext: 
+    :return: 
+    """
+
     files = get_paths_of_files(path)
     rmi = RIModel(dim = 1500, k = 3)
     i = 0
@@ -107,12 +129,17 @@ def analyze_files_of_folder(path="", contextSize = 2, ext = ""):
 
 
 def merge_dicts(d1={}, d2={}):
-    # as the name suggests: if we have more than one dict/model
-    # this is an incremental function to merge them
+    """
+    as the name suggests: if we have more than one dict/model
+    this is an incremental function to merge them
+    :param d1: 
+    :param d2: 
+    :return: 
+    """
+
     nn = {}
     for key in d1.keys():
         if key in d2.keys():
-
             nn[key] = d1[key]+d2[key]
         else:
             nn[key] = d1[key]
@@ -125,30 +152,57 @@ def merge_dicts(d1={}, d2={}):
     print("finished merging")
 
 def to_tree(rim):
+    """
+    should be done !only! with reduced data
+    to enhence search
+    :param rim: 
+    :return: 
+    """
     from sklearn.neighbors import KDTree
-    # should be done !only! with reduced data
-    # to enhence search
-    points = rim.ContextVectors.values()
-    i = 0
-    vals = []
-    for val in points:
-        vals.append(val.toarray()[0])
-        i += 1
-    kdt = KDTree(vals, leaf_size=40, metric='minkowski')
+    key= "france" #test
+
+    values = list(rim.ContextVectors.values())
+    keys = list(rim.ContextVectors.keys())
+    leafs = np.zeros((len(values),rim.dim))
+
+    if not rim.is_sparse:
+        leafs = [val for val in values]
+        some_element = rim.ContextVectors[key]
+    else:
+        leafs = [val.toarray for val in values]
+        some_element = rim.ContextVectors[key]
+
+    start = time.time()
+    kdt = KDTree(leafs, leaf_size=50, metric='minkowski')
+    # search returns index of source-array, i.e. vals
+    print("building tree took me {0: >#08.4f} sec.".format(time.time()-start))
+
+    n_neighbours = 10
+    start = time.time()
+    # converts (n,) to (1,n)
+    some_element = some_element.reshape(1,-1)
+    dist, ind = kdt.query(some_element, k=n_neighbours)
+
+    print("searching tree for {0} took me {1: >#08.5f} sec.".format(n_neighbours,time.time()-start))
+    print("\nword | dist")
+    for i,d in zip(ind[0],dist[0]):
+        print("{0}\t{1: >#016.4f}".format(keys[i],d))
+
     filename = "/home/tobias/tree.pkl"
-    with open(filename, 'wb') as output:
-        pickle.dump(kdt, output)
-    # lässt mich keine keys abspeichern...
+    # with open(filename, 'wb') as output:
+    #     pickle.dump(kdt, output)
+
     # filename = "/home/tobias/keys.pkl"
     # with open(filename, 'wb') as output:
-    #     pickle.dump(rim.ContextVectors, output)
-    #save keys seperately
+    #     pickle.dump(keys, output)
+
 
 def main():
     dim = 50
     k = 3
     rmi = RIModel(dim, k)
     context_size = 2
+    rmi.is_sparse = True
     file_source = "/home/tobias/Dokumente/testdata/stateofunion.txt"
     folder_source = "/home/tobias/Downloads/OANC/data/written_1"
 
@@ -156,34 +210,24 @@ def main():
     #analyze_file_by_context(filename=file_source,rmi=rmi, contextSize=context_size)
     #rmi.write_model_to_file("sou_5")
     rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/oanc/d50k3svd_written_1.pkl')
-    rmi.reduce_dimensions(method="tsne", target_size=75)
+    #rmi.reduce_dimensions(method="truncated_svd", target_size=75)
     #rmi.write_model_to_file("svd_written_1")
 
-    #rmi.is_similar_to(word="man", thres=0.9, count=100)
-
-
-
-
     """
-    fig = plt.figure(1)
-    ax = plt.axes([0., 0., 1., 1.])
-    s = 100
-    plt.scatter(pos[:, 0], pos[:, 1], color='navy', s=s, lw=0,
-                label='True Position')
-    plt.show()
-
-    keys = [key for key in rim.ContextVectors.keys()]
-    with open("/home/tobias/tree.pkl", 'rb') as inputFile:
-        kdt = pickle.load(inputFile)
-
-    test = "men"
-    # bis jetzt nur der nächste nachbar
-    dist, indices = kdt.query(rim.ContextVectors[test].toarray(), k=10)
-    #index = int(ind)
-    #print(len(keys), ind,keys[index])
-    for ind in indices[0]:
-        print(keys[int(ind)])
+        Vektor-Arithmetik
     """
+    # print(rmi.vector_add(words=["man","kid"],isword="boy")) #0.0623583290773
+    # print(rmi.vector_add(words=["waffle", "kid"], isword="church")) #0.0.0535538218819
+    # mit euclicdean
+    # 1268.009495090077
+    # 181.04640127229905
+
+    to_tree(rmi)
+    #rmi.is_similar_to(word="man", thres=0.9, count=10)
+
+
+
+
 
 
 

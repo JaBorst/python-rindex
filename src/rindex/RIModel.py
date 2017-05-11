@@ -9,7 +9,7 @@ import IndexVectorSciPy as IndexVec
 import operator
 fix_vec = lambda input:[(number,number+0.0001)[number == 0.0] for
                         number in input]
-
+import time
 
 class RIModel:
     """RIModel - Random IndexVector Model
@@ -28,17 +28,28 @@ class RIModel:
         self.iv = IndexVec.IndexVector(dim, k)
         self.file_path = "/home/tobias/Dokumente/saved_context_vectors/"
 
-    def write_model_to_file(self, add_text = ""):
+    def write_model_to_file(self, add_text=""):
+        """
+        
+        :param add_text: 
+        :return: 
+        """
         filename = self.file_path+ "d"+str(self.dim)+"k"+str(self.k)+add_text+".pkl"
         print("write model to ",filename)
         with open(filename, 'wb') as output:
             pickle.dump(self.ContextVectors, output)
 
     def load_model_from_file(self, filename):
+        """
+        loads saved context-vectors. also sets is_sparse and dim
+        :param filename: 
+        :return: 
+        """
         with open(filename, 'rb') as inputFile:
             self.ContextVectors = pickle.load(inputFile)
         # get any element and determine if it's sparse or not
         some_element = self.ContextVectors[next(iter(self.ContextVectors))]
+        self.dim = len(some_element)
         if sp.issparse(some_element):
             self.is_sparse = True
         else:
@@ -128,6 +139,7 @@ class RIModel:
             return
         i = 0
         sims = {}
+        start = time.time()
         for key in self.ContextVectors.keys():
             if key != word:
                 sim = self.get_similarity_cos(word, key)
@@ -135,8 +147,11 @@ class RIModel:
                 if sim > thres and i < count:
                     print(key, sim)
                     i += 1
+                if i > count:
+                    break
+        print("searching original structure for {0} took me {1} sec.".format(count, time.time() - start))
 
-        # hier geht was schief
+                    # hier geht was schief, muss aber auch nich unbedingt
         # if i < count:
         #     print("\n\n {0} most similar words".format(count) )
         #     best_n = dict(sorted(sims.items(), key=operator.itemgetter(1), reverse=True)[:count])
@@ -160,10 +175,15 @@ class RIModel:
     #     return (0.5 * (entropy(_P, _M) + entropy(_Q, _M)))
 
     def reduce_dimensions(self,method= "random_projection", target_size=100):
-        # kann ich sicher sein, dass der richtige vector das
-        # richtige key-wort bekommt?
-        # ->ja, da ich die Vektoren beim Erzeugen der Matrix in der
-        # Reihenfolge abgespeichert habe.
+        """
+        kann ich sicher sein, dass der richtige vector das
+        richtige key-wort bekommt?
+        ->ja, da ich die Vektoren beim Erzeugen der Matrix in der
+        Reihenfolge abgespeichert habe.
+        :param method: 
+        :param target_size: 
+        :return: 
+        """
 
         keys = self.ContextVectors.keys()
         # Row-based linked list sparse matrix
@@ -173,17 +193,14 @@ class RIModel:
             for key in keys:
                 target_martix[i] = self.ContextVectors[key].transpose()
                 i += 1
-
+            #target_martix =[self.ContextVectors[key].transpose() for key in keys]
             print("Reduce ", target_martix.shape[1], " to ", target_size)
 
         elif method == "mds" or method == "tsne":
             print("bye bye ram (n is set 10 a low value, for demo)...")
-            n = 1000
-
+            n = 10
             target_martix = np.zeros((n, self.dim))
             i = 0
-
-            print(target_martix.shape)
             for key in keys:
                 if i == n:
                     break
@@ -191,6 +208,7 @@ class RIModel:
                 i += 1
             print("Reduce ", target_martix.shape[1], " to ", 2)
 
+        ## hier geht's los.
         self.ContextVectors = {}  # reset dicct
         if method == "random_projection":
             """
@@ -198,7 +216,7 @@ class RIModel:
             """
             print("using SparseRandomProjection...")
             from sklearn.random_projection import SparseRandomProjection
-            sparse = SparseRandomProjection(n_components = target_martix)
+            sparse = SparseRandomProjection(n_components=target_martix)
             red_data = sparse.fit_transform(target_martix)
             i = 0
             for key in keys:
@@ -222,8 +240,7 @@ class RIModel:
             self.is_sparse = True
         elif method == "mds":
             """
-                MDS: ist leider recht ineffizient implementiert, evtl. besser bei niedrigen
-                Dimensionen.
+                MDS: ist leider recht ineffizient implementiert...
             """
             from sklearn import manifold
             print("use mds...good luck with that!")
@@ -272,7 +289,7 @@ class RIModel:
             iv_sum = np.zeros((self.dim, 1))
             for word in words:
                 iv_sum += self.ContextVectors[word][0]
-            return spatial.distance.euclidean(iv_sum,
+            return 1-spatial.distance.cosine(iv_sum,
                                         self.ContextVectors[isword])
 
 
@@ -291,8 +308,7 @@ class RIModel:
         i = 0
         size = len(tuples)
         for pair in tuples:
-            i+=1
-
+            i += 1
             print("\r%f %%" % (100*i/size), end="")
             simDic.append([pair[0], pair[1], self.get_similarity_cos(pair[0], pair[1])])
         print("Sorting...")
