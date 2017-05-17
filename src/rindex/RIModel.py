@@ -82,28 +82,22 @@ class RIModel:
 		## maske kann in der funktion darüber implementiert werden
 		## frage: bezieht sich das word im context auf sich selbst?
 
-		if context[index] not in self.ContextVectors.keys():
+		if context[index] in self.ContextVectors.keys():
+			pass
+		else:
 			self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
 
-		## add everything but the word at index to the contextVector beeing
-		## created.
-
-		# could be actually better to keep the word, so we create the IV only once
-
-		rest = context[:index] + context[index+1:]
-		self.ContextVectors[context[index]] += self.iv.create_index_vector_from_context(rest)
-
-
+		#rest = context[:index] + context[index+1:]-> should not be done here
+		self.ContextVectors[context[index]] += self.iv.create_index_vector_from_context(context)
 
 		# for word, weight in zip(context, mask):
-		#     if word == context[index]:
-		#         continue
-		#     if word not in self.index_memory.keys():
-		#         ## schritt kann entfallen
-		#                         self.index_memory[word] = self.iv.createIndexVectorFromContext([word])
-		#     if context[index] not in self.ContextVectors.keys():
-		#                         self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
-		#     self.ContextVectors[context[index]] += self.index_memory[word] * weight
+		# 	if word == context[index]:
+		# 		continue
+		# 	if context[index] not in self.ContextVectors.keys():
+		# 		self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
+		# 	if word not in self.index_memory.keys():
+		# 		self.index_memory[word] = self.iv.create_index_vector_from_context([word])
+		# 	self.ContextVectors[context[index]] += self.index_memory[word] * weight
 
 
 	def add_unit(self, unit="", context=[], weights=[]):

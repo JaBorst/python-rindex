@@ -298,14 +298,13 @@ def main():
     # analyze_files_of_folder(path=folder_source,contextSize=2,ext="written_1")
     # analyze_file_by_context(filename=file_source,rmi=rmi, contextSize=context_size)
     # rmi.write_model_to_file("sou_5")
-    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/state_of_union/d1500k3state_of_union.pkl')
-    rmi.reduce_dimensions(method="truncated_svd", target_size=50)
+    #rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/paratest/accu.model')
     # rmi.write_model_to_file("svd_written_1")
 
     #build_word_sim_model(rmi=rmi, path="/home/tobias/Dokumente/testdata/wortschatz_small",context_size=context_size)
     #build_parteiprogramm_model(rmi=rmi,path=folder_source)
 
-    #rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/paratest/accu.model')
+    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/paratest/accu.model')
     #print(rmi.ContextVectors)
 
     #rmi.is_similar_to(word="man", thres=0.6, count=10)
@@ -329,10 +328,10 @@ def main():
     """
         Dim-Red
     """
-    #rmi.reduce_dimensions(method="truncated_svd", target_size=50)
-    #rmi.reduce_dimensions(method="mds", target_size=2)
+    rmi.reduce_dimensions(method="truncated_svd", target_size=20)
+    #rmi.reduce_dimensions(method="", target_size=2)
 
-    #rmi.is_similar_to(word="men",thres=0.9, count=10)
+    #rmi.is_similar_to(word="man",thres=0.9, count=10)
 
     """
         Vektor-Arithmetik
@@ -344,7 +343,7 @@ def main():
         Kd-Baum (als Funktion)
     """
     #
-    keys, kdt = rmi.to_tree(method="minkowski", leaf_size=50)
+    # keys, kdt = rmi.to_tree(method="minkowski", leaf_size=50)
     # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'wb') as output:
     #     pickle.dump(kdt, output)
     # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.keys", 'wb') as output:
@@ -355,7 +354,7 @@ def main():
     # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'rb') as inputFile:
     #     kdt = pickle.load(inputFile)
     #
-    search_tree_for_similar(kdt, keys, method="query", n=10, word="family")
+    # search_tree_for_similar(kdt, keys, method="query", n=10, word="man")
 
 
 if __name__ == '__main__':

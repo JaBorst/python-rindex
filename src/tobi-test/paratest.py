@@ -2,6 +2,7 @@ import sys
 sys.path.append('../')
 import multiprocessing
 
+import pickle
 from t_helper import get_paths_of_files
 from t_helper import clean_word_seq
 from nltk.tokenize import word_tokenize as w_tokenize
@@ -59,7 +60,6 @@ def merge_model(rim1, rim2):
         print("dim,k not matching")
         return
 
-
     for key in rim1.ContextVectors.keys():
         if key in rim2.ContextVectors.keys():
             rim1.ContextVectors[key] = rim1.ContextVectors[key] + rim2.ContextVectors[key]
@@ -81,24 +81,39 @@ def bwhole(path="", target_file=""):
     rim1 = RIModel.RIModel(dim=1, k=1)# dummy
     rim2 = RIModel.RIModel(dim=1, k=1)# dummy
 
+    print("start merging.")
     rim1.load_model_from_file(model_files[0])
     for i in range(1,len(model_files)):
+        if model_files[i] == target_file or model_files[i] == "/home/tobias/Dokumente/saved_context_vectors/paratest/merge.model":
+            continue
         rim2.load_model_from_file(model_files[i])
         merge_model(rim1=rim1,rim2=rim2)
+
+    rim1.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/paratest/merge.model")
+    rim1.reduce_dimensions(method="truncated_svd", target_size=50)
     rim1.write_model_to_file(target_file)
-    print("finish merging.")
+
+    keys, kdt = rim1.to_tree(method="minkowski", leaf_size=50)
+    with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'wb') as output:
+        pickle.dump(kdt, output)
+    with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.keys", 'wb') as output:
+        pickle.dump(keys, output)
+
 
 def main():
     path = "/home/tobias/Dokumente/testdata/wortschatz_small"
     target_path= "/home/tobias/Dokumente/saved_context_vectors/paratest"
     files = get_paths_of_files(path, filetype=".txt")
     procs = 3
+    k = 3
+    dim = 1500
+    context_size = 3
     for i in range(0,len(files),procs):
         jobs = []
         for j in range(0, procs):
             if i+j < len(files):
                 process = multiprocessing.Process(target=bm_on_file,
-                                                  args=(files[i+j],i+j))
+                                                  args=(files[i+j],i+j,context_size, dim, k))
             jobs.append(process)
 
         for j in jobs:
@@ -107,7 +122,7 @@ def main():
         for j in jobs:
             j.join()
     # at the end merge models
-    target_file = target_path + "accu.model"
+    target_file = target_path + "/accu.model"
     bwhole(path=target_path,
            target_file=target_file)
 
