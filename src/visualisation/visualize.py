@@ -20,7 +20,8 @@ tmpdir="tmp/"
 def tsneOnModel(path="dump.model"):
 
 	print("Loading Model File")
-	r = RIModel.RIModel(100,2)
+	r = RIModel2.RIModel(100,2)
+	r.load_model_from_file(path)
 	try:
 		r.load_model_from_file(path)
 	except:
@@ -47,31 +48,10 @@ def tsneOnModel(path="dump.model"):
 	Y = tsne(X=nm, no_dims=2, perplexity=40.0);
 	with open(tmpdir + "reuters.tsne", "wb") as outputTsne:
 		pickle.dump(Y,outputTsne)
+		print("TSNE successfully dumped!")
 
 
-	labels = []
-	with open(tmpdir + "reuters.topics", 'rb') as inputFile:
-		labels = pickle.load(inputFile)
-
-	topicNames= list(set(labels))
-	colorArray = []
-	colorMap = {}
-
-	numTopics = len(topicNames)
-	print("Different Topics: ", numTopics)
-
-	recs = []
-	for i in range(0, len(topicNames) - 1):
-		colorMap[topicNames[i]] = list(colors.cnames.keys())[(i*20)%30]
-		recs.append(mpatches.Rectangle((0, 0), 1, 1, facecolor=colors.cnames[colorMap[topicNames[i]]]))
-
-	for e in labels:
-		colorArray.append(colorMap[e])
-
-	Plot.scatter(x=Y[:, 0], y=Y[:, 1],  c=colorArray)
-	Plot.legend(recs,topicNames, loc=4)
-	Plot.show()
-
+	plotOnly(tmpdir + "reuters.tsne")
 
 
 
