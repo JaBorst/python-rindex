@@ -51,7 +51,7 @@ class RIModel:
 		with open(filename, 'rb') as inputFile:
 			self.ContextVectors = pickle.load(inputFile)
 		# get any element and determine if it's sparse or not
-		some_element = self.ContextVectors[next(iter(self.Co^ntextVectors))]
+		some_element = self.ContextVectors[next(iter(self.ContextVectors))]
 
 		if sp.issparse(some_element):
 			self.is_sparse = True

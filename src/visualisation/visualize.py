@@ -13,19 +13,18 @@ from sklearn.preprocessing import normalize
 import matplotlib.patches as mpatches
 
 from matplotlib import colors
-import pylab
+
 
 tmpdir="tmp/"
 
-def tsneOnModel(path="dump.model"):
+def tsneOnModel(name="dump.model"):
 
 	print("Loading Model File")
-	r = RIModel2.RIModel(100,2)
-	r.load_model_from_file(path)
+	r = RIModel.RIModel(100,2)
 	try:
-		r.load_model_from_file(path)
+		r.load_model_from_file(tmpdir + name + ".model")
 	except:
-		print("File not Found")
+		print("File not Found: ", tmpdir + name + ".model")
 		exit()
 
 
@@ -46,25 +45,25 @@ def tsneOnModel(path="dump.model"):
 
 	print(nm)
 	Y = tsne(X=nm, no_dims=2, perplexity=40.0);
-	with open(tmpdir + "reuters.tsne", "wb") as outputTsne:
+	with open(tmpdir + name + ".tsne", "wb") as outputTsne:
 		pickle.dump(Y,outputTsne)
 		print("TSNE successfully dumped!")
 
 
-	plotOnly(tmpdir + "reuters.tsne")
+	plotOnly(name + ".tsne")
 
 
 
-def plotOnly(path):
+def plotOnly(name):
 
 	print("Loading TSNE File")
 	Y = np.array
-	with open(path,'rb') as inputTSNE:
+	with open(tmpdir + name+".tsne", 'rb') as inputTSNE:
 		Y = pickle.load(inputTSNE)
 
 
 	labels = []
-	with open(tmpdir + "reuters.topics", 'rb') as inputFile:
+	with open(tmpdir + name+".topics", 'rb') as inputFile:
 		labels = pickle.load(inputFile)
 
 	topicNames= list(set(labels))
@@ -104,7 +103,9 @@ def main():
 		elif sys.argv[1] == 'p' or sys.argv[1] == "plot":
 			plotOnly(sys.argv[2])
 	else:
-		print("Arguments?")
+		print("Usage: python visualize.py [c(alc)|p(lot)] [name] ")
+		print("python visualize.py calc [name] will look for a [name].model and a [name].topics file and calculate a tsne, dump a [name].tsne and plot it")
+		print("python visualize.py plot [name] will loog for [name].tsne and [name].topics and just plot")
 
 
 if __name__ == "__main__":
