@@ -84,7 +84,7 @@ def createReutersModel():
 		else:
 			continue
 
-	r.is_similar_to(word="6006")
+	#r.is_similar_to(word="6006")
 
 	r.write_model_to_file(model)
 	with open("reuters.places","wb") as placesOutput:
