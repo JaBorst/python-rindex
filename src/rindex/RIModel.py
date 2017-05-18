@@ -165,7 +165,7 @@ class RIModel:
 		if method == "cos":
 			return self.get_similarity_cos(word1,word2)
 		if method == "jaccard":
-			return self.get_similarity_cos(word1,word2)
+			return self.get_similarity_jaccard(word1,word2)
 
 	def is_similar_to(self, word ="", thres = 0.9, count = 10):
 		""" Returns words with the least distance to the given word.
@@ -187,15 +187,26 @@ class RIModel:
 		i = 0
 		sims = {}
 		start = time.time()
+		max_sim=0.0
+		max_word=""
+
 		for key in self.ContextVectors.keys():
 			if key != word:
-				sim = self.get_similarity_cos(word, key)
+				sim = self.get_similarity(word, key, method="cos")
 				sims[key] = sim
-				if sim > thres and i < count:
-					print(key, sim)
-					i += 1
-				if i > count:
-					break
+				#print(sim)
+
+				if max_sim<sim:
+					max_sim = sim
+					max_word = key
+					print(key,max_sim)
+
+				# if sim > thres and i < count:
+				# 	print(key, sim)
+				# 	i += 1
+				# if i > count:
+				# 	break
+		print("max",max_word, max_sim)
 		print("searching original structure for {0} took me {1} sec.".format(count, time.time() - start))
 
 					# hier geht was schief, muss aber auch nich unbedingt

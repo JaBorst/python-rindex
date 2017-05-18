@@ -49,7 +49,7 @@ from sklearn.neighbors import KDTree
 
 def normalize_matrix(matrix):
     from sklearn.preprocessing import normalize
-    return normalize(matrix, axis=1, norm='l1')
+    return normalize(matrix, axis=1, norm='l2')
 
 
 def search_in_matrix(matrix,keys=[],word=""):
@@ -61,12 +61,17 @@ def search_in_matrix(matrix,keys=[],word=""):
     :return: 
     """
     from scipy import spatial
-    word_iv = matrix[keys.index(word)].toarray()
+    word_iv = matrix[keys.index(word)]
+
+    if sp.issparse(word_iv):
+        word_iv=word_iv.toarray()
+
+
     max_d = 0
     max_key = ""
     for key in keys:
         if key != word:
-            d = 1-spatial.distance.cosine(word_iv, matrix[keys.index(key)].toarray())
+            d = 1-spatial.distance.cosine(word_iv, matrix[keys.index(key)])#.toarray())
             if d > max_d:
                 max_d = d
                 max_key = key
@@ -297,23 +302,23 @@ def main():
 
     # analyze_files_of_folder(path=folder_source,contextSize=2,ext="written_1")
     # analyze_file_by_context(filename=file_source,rmi=rmi, contextSize=context_size)
-    # rmi.write_model_to_file("sou_5")
-    #rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/paratest/accu.model')
     # rmi.write_model_to_file("svd_written_1")
 
     #build_word_sim_model(rmi=rmi, path="/home/tobias/Dokumente/testdata/wortschatz_small",context_size=context_size)
     #build_parteiprogramm_model(rmi=rmi,path=folder_source)
 
-    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/paratest/accu.model')
+    #rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/d1500accu_2.model')
     #print(rmi.ContextVectors)
 
-    #rmi.is_similar_to(word="man", thres=0.6, count=10)
+    #rmi.is_similar_to(word="man", thres=0.9, count=10)
     #file_context(rmi=rmi, path="/home/tobias/Dokumente/testdata/Newspapers/Crown_with_metadata")
-    # keys, matrix = to_matrix(rim=rmi)
-    # normed_matrix= normalize_matrix(matrix)
-    # search_in_matrix(matrix=matrix,keys=keys, word="man")
-    #rmi.is_similar_to(word="e2017_afd",thres = 0.1, count = 10)
+    #keys, matrix = rmi.to_matrix()
+    #normed_matrix = normalize_matrix(matrix)
 
+    #search_in_matrix(matrix=matrix,keys=keys, word="e2017_die_Linke")
+    #rmi.is_similar_to(word="2012_partei_der_vernunft", thres=0.1, count=10)
+
+    #print(rmi.ContextVectors.keys())
     """
         geht leider nicht
     """
@@ -328,10 +333,9 @@ def main():
     """
         Dim-Red
     """
-    rmi.reduce_dimensions(method="truncated_svd", target_size=20)
+    #rmi.reduce_dimensions(method="truncated_svd", target_size=40)
     #rmi.reduce_dimensions(method="", target_size=2)
 
-    #rmi.is_similar_to(word="man",thres=0.9, count=10)
 
     """
         Vektor-Arithmetik
@@ -342,19 +346,27 @@ def main():
     """
         Kd-Baum (als Funktion)
     """
+
+    #keys, kdt = rmi.to_tree(method="minkowski", leaf_size=50)
     #
-    # keys, kdt = rmi.to_tree(method="minkowski", leaf_size=50)
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'wb') as output:
+    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim2.tree", 'wb') as output:
     #     pickle.dump(kdt, output)
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.keys", 'wb') as output:
+    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim2.keys", 'wb') as output:
     #     pickle.dump(keys, output)
 
     # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.keys", 'rb') as inputFile:
     #     keys = pickle.load(inputFile)
     # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'rb') as inputFile:
     #     kdt = pickle.load(inputFile)
-    #
-    # search_tree_for_similar(kdt, keys, method="query", n=10, word="man")
+
+    #search_tree_for_similar(kdt, keys, method="query", n=10, word="home")
+
+    with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.keys", 'rb') as inputFile:
+        keys = pickle.load(inputFile)
+    with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'rb') as inputFile:
+        kdt = pickle.load(inputFile)
+
+    search_tree_for_similar(kdt, keys, method="query", n=10, word="women")
 
 
 if __name__ == '__main__':

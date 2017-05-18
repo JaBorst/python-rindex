@@ -40,7 +40,7 @@ def bm_on_file(filename, f_number, context_size=2, dim=1500, k=5):
                     pass
             if len(context):
                 try:
-                    rmi.add_context(context, index=0)
+                    rmi.add_context(context, index=1)
                 except:
                     pass
                     # break
@@ -104,10 +104,10 @@ def main():
     path = "/home/tobias/Dokumente/testdata/wortschatz_small"
     target_path= "/home/tobias/Dokumente/saved_context_vectors/paratest"
     files = get_paths_of_files(path, filetype=".txt")
-    procs = 3
-    k = 3
-    dim = 1500
-    context_size = 3
+    procs = 1
+    k = 2
+    dim = 500
+    context_size = 2
     for i in range(0,len(files),procs):
         jobs = []
         for j in range(0, procs):
@@ -127,7 +127,15 @@ def main():
            target_file=target_file)
 
 if __name__ == "__main__":
-    main()
+    #main()
+    rim1 = RIModel.RIModel(dim=1, k=1)# dummy
+    rim2 = RIModel.RIModel(dim=1, k=1)# dummy
+    rim1.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_2.model")
+    rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/oanc/d1500k3written_1.pkl")
+    print(rim1.dim,rim2.dim)
+    merge_model(rim1,rim2)
+    #            rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/clob_crown/d1500k3merge.pkl"))
+    rim1.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_2.model")
     # bwhole(path="/home/tobias/Dokumente/saved_context_vectors/paratest",
     #        target_file="/home/tobias/Dokumente/saved_context_vectors/paratest/accu")
 
