@@ -94,9 +94,9 @@ def bwhole(path="", target_file=""):
     rim1.write_model_to_file(target_file)
 
     keys, kdt = rim1.to_tree(method="minkowski", leaf_size=50)
-    with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'wb') as output:
+    with open("/home/tobias/Dokumente/saved_context_vectors/paratest/word_sim.tree", 'wb') as output:
         pickle.dump(kdt, output)
-    with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.keys", 'wb') as output:
+    with open("/home/tobias/Dokumente/saved_context_vectors/paratest/word_sim.keys", 'wb') as output:
         pickle.dump(keys, output)
 
 
@@ -104,9 +104,9 @@ def main():
     path = "/home/tobias/Dokumente/testdata/wortschatz_small"
     target_path= "/home/tobias/Dokumente/saved_context_vectors/paratest"
     files = get_paths_of_files(path, filetype=".txt")
-    procs = 1
+    procs = 3
     k = 2
-    dim = 500
+    dim = 1500
     context_size = 2
     for i in range(0,len(files),procs):
         jobs = []
@@ -127,15 +127,15 @@ def main():
            target_file=target_file)
 
 if __name__ == "__main__":
-    #main()
-    rim1 = RIModel.RIModel(dim=1, k=1)# dummy
-    rim2 = RIModel.RIModel(dim=1, k=1)# dummy
-    rim1.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_2.model")
-    rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/oanc/d1500k3written_1.pkl")
-    print(rim1.dim,rim2.dim)
-    merge_model(rim1,rim2)
-    #            rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/clob_crown/d1500k3merge.pkl"))
-    rim1.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_2.model")
+    main()
+    # rim1 = RIModel.RIModel(dim=1, k=1)# dummy
+    # rim2 = RIModel.RIModel(dim=1, k=1)# dummy
+    # rim1.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_2.model")
+    # rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/oanc/d1500k3written_1.pkl")
+    # print(rim1.dim,rim2.dim)
+    # merge_model(rim1,rim2)
+    # #            rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/clob_crown/d1500k3merge.pkl"))
+    #rim1.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_2.model")
     # bwhole(path="/home/tobias/Dokumente/saved_context_vectors/paratest",
     #        target_file="/home/tobias/Dokumente/saved_context_vectors/paratest/accu")
 

@@ -4,6 +4,7 @@ from rindex import *
 import os
 from nltk.corpus import stopwords
 stop = set(stopwords.words('english'))
+from nltk.stem.snowball import SnowballStemmer
 
 
 def clean_word_seq(context = []):
@@ -12,13 +13,15 @@ def clean_word_seq(context = []):
     :param context: 
     :return: 
     """
+    #stemmer = SnowballStemmer("english")
+
     if len(context) > 1:
         return [word.lower() for word in context if word.lower() not in stop and word.isalpha()]
     elif len(context) == 0:
         return
     elif len(context) == 1:
         if context[0].lower() not in stop and context[0].isalpha():
-            return context[0].lower()
+            return stemmer.stem(context[0].lower())
         else:
             return
 
@@ -59,3 +62,34 @@ def merge_dicts(d1={}, d2={}):
     rim.ContextVectors = nn
     rim.write_model_to_file("accu")
     print("finished merging")
+
+
+
+def normalize_matrix(matrix):
+    from sklearn.preprocessing import normalize
+    return normalize(matrix, axis=1, norm='l2')
+
+
+def search_in_matrix(matrix, keys=[], word=""):
+    """
+
+    :param matrix: 
+    :param keys: 
+    :param word: 
+    :return: 
+    """
+    from scipy import spatial
+    word_iv = matrix[keys.index(word)]
+
+    if sp.issparse(word_iv):
+        word_iv = word_iv.toarray()
+
+    max_d = 0
+    max_key = ""
+    for key in keys:
+        if key != word:
+            d = 1 - spatial.distance.cosine(word_iv, matrix[keys.index(key)])  # .toarray())
+            if d > max_d:
+                max_d = d
+                max_key = key
+    print(max_d, max_key)

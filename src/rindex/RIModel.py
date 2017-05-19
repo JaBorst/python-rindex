@@ -306,7 +306,7 @@ class RIModel:
 			mds = manifold.MDS(n_components=2, max_iter=10, eps=1e-6, random_state=seed,
 							dissimilarity="euclidean", n_jobs=2, verbose=1)
 			red_data = mds.fit_transform(target_martix)#.embedding_
-			self.is_sparse = True
+			self.is_sparse = False
 
 		elif method == "tsne":
 			from sklearn.manifold import TSNE
@@ -314,7 +314,7 @@ class RIModel:
 			model = TSNE(n_components=2, random_state=0, metric='euclidean')
 			np.set_printoptions(suppress=True)
 			red_data = model.fit_transform(target_martix)
-			self.is_sparse = True
+			self.is_sparse = False
 
 		for i, key in zip(range(len(keys)),keys):
 				self.ContextVectors[key] = red_data[i]

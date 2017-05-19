@@ -11,89 +11,16 @@ import pickle
 import time
 from t_helper import get_paths_of_files
 from t_helper import clean_word_seq
+from t_helper import normalize_matrix
+from t_helper import search_in_matrix
+
 from rindex import *
 
 import numpy as np
 import scipy.sparse as sp
 from sklearn.neighbors import KDTree
 
-"""
-    @todo Move to RIModel. Ich finde, zumindest die tree Methode können wir 
-    auch außerhalb lassen. Das hat ja so gesehen nichts mehr mit dem Model zu tun.
-    begin
-"""
-# def to_matrix(rim, to_sparse=False, is_sparse=True):
-#     """
-#
-#     :param rim:
-#     :param sparse:
-#     :return:
-#     """
-#     keys = rim.ContextVectors.keys()
-#     i = range(len(keys))
-#     if to_sparse and is_sparse:
-#         target_martix = sp.lil_matrix((len(keys), rim.dim))
-#         for key, i in zip(keys,i):
-#             target_martix[i] = rim.ContextVectors[key].transpose()
-#     elif not to_sparse:
-#         target_martix = np.zeros((len(keys), rim.dim))
-#         if is_sparse:
-#             for key, i in zip(keys,i):
-#                 target_martix[i, :] = rim.ContextVectors[key].transpose().toarray()
-#         else:
-#             for key, i in zip(keys,i):
-#                 target_martix[i, :] = rim.ContextVectors[key]
-#     print("converted dict to matrix")
-#     return list(keys), target_martix
-
-
-def normalize_matrix(matrix):
-    from sklearn.preprocessing import normalize
-    return normalize(matrix, axis=1, norm='l2')
-
-
-def search_in_matrix(matrix,keys=[],word=""):
-    """
-    
-    :param matrix: 
-    :param keys: 
-    :param word: 
-    :return: 
-    """
-    from scipy import spatial
-    word_iv = matrix[keys.index(word)]
-
-    if sp.issparse(word_iv):
-        word_iv=word_iv.toarray()
-
-
-    max_d = 0
-    max_key = ""
-    for key in keys:
-        if key != word:
-            d = 1-spatial.distance.cosine(word_iv, matrix[keys.index(key)])#.toarray())
-            if d > max_d:
-                max_d = d
-                max_key = key
-    print(max_d, max_key)
-
-
-# def to_tree(rim, method='minkowski'):
-#     """
-#     should be done !only! with reduced data
-#     to enhence search
-#     :param rim:
-#     :return:
-#     """
-#     if rim.dim > 50:
-#         print(">50 dim is not recommended. please reduce first.")
-#         return
-#     if not rim.is_sparse:
-#         keys, leafs = to_matrix(rim, to_sparse=False, is_sparse=False)
-#     else:
-#         keys, leafs = to_matrix(rim, to_sparse=False, is_sparse=True)
-#     leafs = normalize_matrix(leafs)#####
-#     return keys, KDTree(leafs, leaf_size=50, metric=method)
+import matplotlib.pyplot as plt
 
 
 def search_tree_for_similar(kdt, keys, method="query", n=10, word=""):
@@ -117,10 +44,7 @@ def search_tree_for_similar(kdt, keys, method="query", n=10, word=""):
     for i, d in zip(ind[0], dist[0]):
         print("{0}\t{1: >#016.4f}".format(keys[i], d))
 
-"""
-    end
-    @todo Move to RIModel
-"""
+
 def analyze_file_by_context(filename, rmi, contextSize = 2):
     """
     
@@ -140,14 +64,12 @@ def analyze_file_by_context(filename, rmi, contextSize = 2):
             print("error with ",filename)
             return
     # first extract sentences (later tokenize to words)
-    content = s_tokenize(text)
-    size = len(content)
+    context = s_tokenize(text)
+    size = len(context)
+    for i, sentence in zip(range(len(context)),context):
+        # if i%100 == 0:
+        #     print("\r%f %%" % (100*i/size), end="")
 
-    for i, sentence in zip(range(len(context)),content):
-        if i%100 == 0:
-            print("\r%f %%" % (100*i/size), end="")
-        ## man kann natürlich auch hier das 1. wort rausnehmen
-        ## für jedes wort
         sent = clean_word_seq(w_tokenize(sentence))
         try:
             # kann auch bis len(sent)-contextSize gehen
@@ -167,6 +89,7 @@ def analyze_file_by_context(filename, rmi, contextSize = 2):
                         pass
         except:
             pass            
+    #print("finish")
 
 
 def analyze_text_files_of_folder(rmi, path="", contextSize = 2, ext =""):
@@ -185,7 +108,7 @@ def analyze_text_files_of_folder(rmi, path="", contextSize = 2, ext =""):
     :return: 
     """
 
-    files = get_paths_of_files(path)
+    files = get_paths_of_files(path,filetype="")
     size = len(files)
     print(size)
     for i, filename in zip(range(len(files)),files):
@@ -219,6 +142,36 @@ def build_parteiprogramm_model(rmi, path=""):
     rmi.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/parteiprogramm_30000.model")
 
 
+def txt_file_by_context(rmi, path ="", contextSize=2,ext=""):
+    """
+    
+    :param rmi: 
+    :param path: 
+    :param contextSize: 
+    :param ext: 
+    :return: 
+    """
+    from pathlib import Path
+    files = get_paths_of_files(path, filetype="")
+    size = len(files)
+    for i,filename in zip(range(len(files)),files):
+        if i%10 == 0:
+            print("\r%f %%" % (100*i/size), end="")
+        raw_text = ""
+        try:
+            with open(filename, 'r', encoding='utf-8') as fin:
+                raw_text = fin.read()
+        except:
+            try:
+                with open(filename, 'r', encoding='iso-8859-1') as fin:
+                    raw_text = fin.read()
+            except:
+                print("error with ", filename)
+                return
+        p = Path(filename)
+        rmi.add_unit(unit=p.parts[-2], context=(clean_word_seq(w_tokenize(raw_text))))
+    rmi.write_model_to_file("news.model")
+    print("done.")
 
 def file_context(rmi, path = ""):
     """
@@ -292,50 +245,50 @@ def build_word_sim_model(rmi, path="", context_size=2):
 
 
 def main():
-    dim = 3000
-    k = 5
+    dim = 1500
+    k = 3
     rmi = RIModel.RIModel(dim, k)
     context_size = 2
     rmi.is_sparse = True
-    file_source = "/home/tobias/Dokumente/testdata/stateofunion.txt"
-    folder_source = "/home/tobias/Dokumente/testdata/wp_entwürfe_2017"
+    file_source = "/home/tobias/Dokumente/testdata/20_newsgroups/comp.graphics/"
+    folder_source = "/home/tobias/Dokumente/testdata/20_newsgroups/"
 
-    # analyze_files_of_folder(path=folder_source,contextSize=2,ext="written_1")
-    # analyze_file_by_context(filename=file_source,rmi=rmi, contextSize=context_size)
+    #txt_file_by_context(rmi, path=folder_source,contextSize=2,ext="/home/tobias/Dokumente/saved_context_vectors/news.model")
+    #analyze_file_by_context(filename=file_source,rmi=rmi, contextSize=context_size)
     # rmi.write_model_to_file("svd_written_1")
 
     #build_word_sim_model(rmi=rmi, path="/home/tobias/Dokumente/testdata/wortschatz_small",context_size=context_size)
     #build_parteiprogramm_model(rmi=rmi,path=folder_source)
 
-    #rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/d1500accu_2.model')
-    #print(rmi.ContextVectors)
+    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/paratest/merge.model')
+    print(rmi.ContextVectors)
 
     #rmi.is_similar_to(word="man", thres=0.9, count=10)
     #file_context(rmi=rmi, path="/home/tobias/Dokumente/testdata/Newspapers/Crown_with_metadata")
-    #keys, matrix = rmi.to_matrix()
     #normed_matrix = normalize_matrix(matrix)
 
-    #search_in_matrix(matrix=matrix,keys=keys, word="e2017_die_Linke")
-    #rmi.is_similar_to(word="2012_partei_der_vernunft", thres=0.1, count=10)
+    #rmi.is_similar_to(word="man", thres=0.1, count=10)
 
     #print(rmi.ContextVectors.keys())
-    """
-        geht leider nicht
-    """
-    # tag_names_to_exclude = {}
-    # reader = Project1Filter(tag_names_to_exclude, make_parser())
-    # filename = "/home/tobias/Dokumente/testdata/Newspapers/CLOB_with_metadata/A01BA.txt"
-    # with open('out-small.xml', 'w') as f:
-    #     handler = XMLGenerator(f)
-    #     reader.setContentHandler(handler)
-    #     reader.parse(filename)
 
     """
         Dim-Red
     """
-    #rmi.reduce_dimensions(method="truncated_svd", target_size=40)
-    #rmi.reduce_dimensions(method="", target_size=2)
+    rmi.reduce_dimensions(method="truncated_svd", target_size=50)
+    #rmi.reduce_dimensions(method="mds", target_size=2)
+    # #rmi.is_similar_to(word="2012_partei_der_vernunft", thres=0.1, count=10)
+    #keys, matrix = rmi.to_matrix()
 
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111)
+    # plt.plot(matrix[:,0],matrix[:,1],'ro')
+    #
+    # for i,x,y in zip(range(len(keys)),matrix[:,0],matrix[:,1]):  # <--
+    #     ax.annotate('%s' % keys[i],xy=(x,y),textcoords='data')  # <--
+    #
+    # plt.grid()
+    # plt.show()
+    #
 
     """
         Vektor-Arithmetik
@@ -347,7 +300,7 @@ def main():
         Kd-Baum (als Funktion)
     """
 
-    #keys, kdt = rmi.to_tree(method="minkowski", leaf_size=50)
+    keys, kdt = rmi.to_tree(method="minkowski", leaf_size=50)
     #
     # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim2.tree", 'wb') as output:
     #     pickle.dump(kdt, output)
@@ -359,14 +312,14 @@ def main():
     # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'rb') as inputFile:
     #     kdt = pickle.load(inputFile)
 
-    #search_tree_for_similar(kdt, keys, method="query", n=10, word="home")
+    search_tree_for_similar(kdt, keys, method="query", n=10, word="man")
 
-    with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.keys", 'rb') as inputFile:
-        keys = pickle.load(inputFile)
-    with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'rb') as inputFile:
-        kdt = pickle.load(inputFile)
-
-    search_tree_for_similar(kdt, keys, method="query", n=10, word="women")
+    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.keys", 'rb') as inputFile:
+    #     keys = pickle.load(inputFile)
+    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'rb') as inputFile:
+    #     kdt = pickle.load(inputFile)
+    #
+    # search_tree_for_similar(kdt, keys, method="query", n=10, word="women")
 
 
 if __name__ == '__main__':
