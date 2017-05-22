@@ -13,15 +13,16 @@ def clean_word_seq(context = []):
     :param context: 
     :return: 
     """
-    #stemmer = SnowballStemmer("english")
-
+    stemmer = SnowballStemmer("english",ignore_stopwords=False)
+    #not in stop
+    # stop-words are for suckers...
     if len(context) > 1:
-        return [word.lower() for word in context if word.lower() not in stop and word.isalpha()]
+        return [word.lower() for word in context if word.isalpha()]
     elif len(context) == 0:
         return
     elif len(context) == 1:
-        if context[0].lower() not in stop and context[0].isalpha():
-            return stemmer.stem(context[0].lower())
+        if context[0].isalpha():
+            return context[0].lower()
         else:
             return
 

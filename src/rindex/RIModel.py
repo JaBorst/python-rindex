@@ -38,7 +38,7 @@ class RIModel:
 		:param filename:
 		:return:
 		"""
-		print("write model to ",filename)
+		#print("write model to ",filename)
 		with open(filename, 'wb') as output:
 			pickle.dump(self.ContextVectors, output)
 
@@ -80,28 +80,14 @@ class RIModel:
 		"""
 		if not mask:
 			mask = [1] * len(context)
-		# für jedes word im Kontext wird dessen IndexVector auf den Kontextvektor
-		# addiert. Der Vektor bezieht sich im default-Fall auf das 1. Wort.
-
-		## maske kann in der funktion darüber implementiert werden
-		## frage: bezieht sich das word im context auf sich selbst?
 
 		if context[index] in self.ContextVectors.keys():
 			pass
 		else:
 			self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
 
-		#rest = context[:index] + context[index+1:]-> should not be done here
-		self.ContextVectors[context[index]] += self.iv.create_index_vector_from_context(context)
-
-		# for word, weight in zip(context, mask):
-		# 	if word == context[index]:
-		# 		continue
-		# 	if context[index] not in self.ContextVectors.keys():
-		# 		self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
-		# 	if word not in self.index_memory.keys():
-		# 		self.index_memory[word] = self.iv.create_index_vector_from_context([word])
-		# 	self.ContextVectors[context[index]] += self.index_memory[word] * weight
+		rest = context[:index] + context[index+1:]#-> should not be done here
+		self.ContextVectors[context[index]] += self.iv.create_index_vector_from_context(rest)
 
 
 	def add_unit(self, unit="", context=[], weights=[]):
@@ -151,8 +137,12 @@ class RIModel:
 		"""
 		featureMins = 0
 		featureMax = 0
-		cv1 = np.array(self.ContextVectors[word1].toarray().transpose()[0])
-		cv2 =  np.array(self.ContextVectors[word2].toarray().transpose()[0])
+		if self.is_sparse:
+			cv1 = np.array(self.ContextVectors[word1].toarray().transpose()[0])
+			cv2 =  np.array(self.ContextVectors[word2].toarray().transpose()[0])
+		else:
+			cv1 = np.array(self.ContextVectors[word1].transpose())
+			cv2 = np.array(self.ContextVectors[word2].transpose())
 
 		pos1 = np.append(np.abs(cv1.clip(max=0)), cv1.clip(min=0))
 		pos2 = np.append(np.abs(cv2.clip(max=0)), cv2.clip(min=0))
@@ -183,8 +173,12 @@ class RIModel:
 		:return: 
 		"""
 		# Get the Context Vectors
-		cv1 = self.ContextVectors[word1].toarray().transpose()[0]
-		cv2 = self.ContextVectors[word2].toarray().transpose()[0]
+		if self.is_sparse:
+			cv1 = self.ContextVectors[word1].toarray().transpose()[0]
+			cv2 = self.ContextVectors[word2].toarray().transpose()[0]
+		else:
+			cv1 = np.array(self.ContextVectors[word1].transpose())
+			cv2 = np.array(self.ContextVectors[word2].transpose())
 
 		# Extract the Probabilty Dimensions
 		# First Positive then negative
@@ -223,7 +217,7 @@ class RIModel:
 		if method == "jsd":
 			return self.get_similarity_jsd(word1,word2)
 
-	def is_similar_to(self, word ="", thres = 0.9, count = 10):
+	def is_similar_to(self, word ="", thres = 0.9, count = 10, method="cos"):
 		""" Returns words with the least distance to the given word.
 		The combination of threshold and count can be used e.g. for
 		testing to get a small amount of words (and stop after that).
@@ -246,31 +240,24 @@ class RIModel:
 		max_sim=0.0
 		max_word=""
 
-		for key in self.ContextVectors.keys():
-			if key != word:
-				sim = self.get_similarity(word, key, method="cos")
-				sims[key] = sim
-				#print(sim)
+		sum_time = 0.0
+		for i in range(1):
+			start = time.time()
+			for key in self.ContextVectors.keys():
+				if key != word:
+					sim = self.get_similarity(word, key, method=method)
+					sims[key] = sim
 
-				if max_sim<sim:
-					max_sim = sim
-					max_word = key
-					print(key,max_sim)
+					if max_sim<sim:
+						max_sim = sim
+						max_word = key
+						#print(key,max_sim)
+			sum_time += time.time()-start
 
-				# if sim > thres and i < count:
-				# 	print(key, sim)
-				# 	i += 1
-				# if i > count:
-				# 	break
+		print(sum_time/1,method)
 		print("max",max_word, max_sim)
-		print("searching original structure for {0} took me {1} sec.".format(count, time.time() - start))
+		#print("searching original structure for {0} took me {1} sec.".format(count, time.time() - start))
 
-					# hier geht was schief, muss aber auch nich unbedingt
-		# if i < count:
-		#     print("\n\n {0} most similar words".format(count) )
-		#     best_n = dict(sorted(sims.items(), key=operator.itemgetter(1), reverse=True)[:count])
-		#     for word in best_n.keys():
-		#         print(word,"\t\t", best_n[word])
 
 
 

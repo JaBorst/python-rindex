@@ -33,13 +33,18 @@ def search_tree_for_similar(kdt, keys, method="query", n=10, word=""):
     :param word: 
     :return: 
     """
+
     some_element = np.array(kdt.data[keys.index(word)])
-    start = time.time()
-    if method == "query":
-        dist, ind = kdt.query(some_element.reshape(1, -1), k=n)
+    sum_time = 0.0
+    for i in range(10):
+        start = time.time()
+        if method == "query":
+            dist, ind = kdt.query(some_element.reshape(1, -1), k=n)
+        sum_time += time.time() - start
+    print(sum_time/10)
     # elif method == "radius":
     #     ind = kdt.query_ball_point(x=some_element, r=1)
-    print("searching tree for {0} took me {1: >#08.5f} sec.".format(n, time.time() - start))
+    #print("searching tree for {0} took me {1: >#08.5f} sec.".format(n, time.time() - start))
 
     for i, d in zip(ind[0], dist[0]):
         print("{0}\t{1: >#016.4f}".format(keys[i], d))
@@ -63,28 +68,23 @@ def analyze_file_by_context(filename, rmi, contextSize = 2):
         except:
             print("error with ",filename)
             return
-    # first extract sentences (later tokenize to words)
     context = s_tokenize(text)
     size = len(context)
     for i, sentence in zip(range(len(context)),context):
         # if i%100 == 0:
         #     print("\r%f %%" % (100*i/size), end="")
-
         sent = clean_word_seq(w_tokenize(sentence))
         try:
-            # kann auch bis len(sent)-contextSize gehen
             for j in range(len(sent)):
                 context = []
-                ## schnappe dir das nächste(n) wort(e), wenn es das gibt
                 for k in range(j, j+contextSize):
                     try:
                         context.append(sent[k])
                     except:
                         pass
-                ## und füge den Kontext hinzu
                 if len(context):
                     try:
-                        rmi.add_context(context, index = 0)
+                        rmi.add_context(context, index=0)
                     except:
                         pass
         except:
@@ -95,12 +95,6 @@ def analyze_file_by_context(filename, rmi, contextSize = 2):
 def analyze_text_files_of_folder(rmi, path="", contextSize = 2, ext =""):
     """
     walks through folder and builds a model
-    ideas:
-    - add a random (random) vector for each document
-      to each context in this document
-    - build the models incremental, i.e. one model for
-      each file, then add them up -> is this possible?
-    -> at the moment it's just one model, also ok
     :param:rmi
     :param path: 
     :param contextSize: 
@@ -108,13 +102,13 @@ def analyze_text_files_of_folder(rmi, path="", contextSize = 2, ext =""):
     :return: 
     """
 
-    files = get_paths_of_files(path,filetype="")
+    files = get_paths_of_files(path,filetype=".txt")
     size = len(files)
     print(size)
     for i, filename in zip(range(len(files)),files):
         if i%10 == 0:
             print("\r%f %%" % (100*i/size), end="")
-        analyze_file_by_context(filename, rmi, contextSize = 2)
+        analyze_file_by_context(filename, rmi, contextSize = contextSize)
         if i%50 == 0:
             rmi.write_model_to_file(ext)
     rmi.write_model_to_file(ext)
@@ -173,6 +167,7 @@ def txt_file_by_context(rmi, path ="", contextSize=2,ext=""):
     rmi.write_model_to_file("news.model")
     print("done.")
 
+
 def file_context(rmi, path = ""):
     """
      context ~ file -> read text-files
@@ -181,11 +176,9 @@ def file_context(rmi, path = ""):
     :return: 
     """
     import re
-
     files = get_paths_of_files(path, filetype=".txt")
     size = len(files)
     tags = ["<URL>", "<Country>", "<Publication_year>", "<Publisher>", "<Contributor>", "<Author>"]
-
     for i,filename in zip(range(len(files)),files):
         if i%10 == 0:
             print("\r%f %%" % (100*i/size), end="")
@@ -207,41 +200,42 @@ def file_context(rmi, path = ""):
     print("done.")
 
 
-def build_word_sim_model(rmi, path="", context_size=2):
-    """
-    walks through all of the files 2006-2015 (eng) to build a 
-    model for word simi.
-    :param rmi: 
-    :param path: 
-    :param context_size: 
-    :return: 
-    """
-    files = get_paths_of_files(path, filetype=".txt")
-    #files = ["/home/tobias/Dokumente/testdata/eng_news_2015_10K-sentences.txt"]
-    for file in files:
-        with open(file, 'r', encoding="utf-8") as fin:
-            sents = fin.readlines()
-        print(file)
-        size = len(sents)
-        for i,sent in zip(range(len(sents)),sents):
-            if i % 100 == 0:
-                print("\r%f %%" % (100 * i / size), end="")
-            sent = clean_word_seq(w_tokenize(sent))
-            for j in range(len(sent)):
-                context = []
-                for k in range(j, j + context_size):
-                    try:
-                        context.append(sent[k])
-                    except:
-                        pass
-                if len(context):
-                    try:
-                        rmi.add_context(context, index=0)
-                    except:
-                        pass
-            #break
-        rmi.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/small_word_sim_k5.model")
-        #break
+# @depr. see paratest
+# def build_word_sim_model(rmi, path="", context_size=2):
+#     """
+#     walks through all of the files 2006-2015 (eng) to build a
+#     model for word simi.
+#     :param rmi:
+#     :param path:
+#     :param context_size:
+#     :return:
+#     """
+#     files = get_paths_of_files(path, filetype=".txt")
+#     #files = ["/home/tobias/Dokumente/testdata/eng_news_2015_10K-sentences.txt"]
+#     for file in files:
+#         with open(file, 'r', encoding="utf-8") as fin:
+#             sents = fin.readlines()
+#         print(file)
+#         size = len(sents)
+#         for i,sent in zip(range(len(sents)),sents):
+#             if i % 100 == 0:
+#                 print("\r%f %%" % (100 * i / size), end="")
+#             sent = clean_word_seq(w_tokenize(sent))
+#             for j in range(len(sent)):
+#                 context = []
+#                 for k in range(j, j + context_size):
+#                     try:
+#                         context.append(sent[k])
+#                     except:
+#                         pass
+#                 if len(context):
+#                     try:
+#                         rmi.add_context(context, index=0)
+#                     except:
+#                         pass
+#             #break
+#         rmi.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/small_word_sim_k5.model")
+#         #break
 
 
 def main():
@@ -250,35 +244,45 @@ def main():
     rmi = RIModel.RIModel(dim, k)
     context_size = 2
     rmi.is_sparse = True
-    file_source = "/home/tobias/Dokumente/testdata/20_newsgroups/comp.graphics/"
-    folder_source = "/home/tobias/Dokumente/testdata/20_newsgroups/"
-
+    file_source = "/home/tobias/Dokumente/testdata/stateofunion.txt"
+    folder_source = "/home/tobias/Dokumente/testdata/OANC/data/written_2"
+    #analyze_text_files_of_folder(rmi,folder_source,context_size,"/home/tobias/Dokumente/saved_context_vectors/oanc/no_stem_d1500k3written_2.model")
     #txt_file_by_context(rmi, path=folder_source,contextSize=2,ext="/home/tobias/Dokumente/saved_context_vectors/news.model")
     #analyze_file_by_context(filename=file_source,rmi=rmi, contextSize=context_size)
-    # rmi.write_model_to_file("svd_written_1")
+    #rmi.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/state_of_union_stem.model")
 
     #build_word_sim_model(rmi=rmi, path="/home/tobias/Dokumente/testdata/wortschatz_small",context_size=context_size)
     #build_parteiprogramm_model(rmi=rmi,path=folder_source)
 
-    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/paratest/merge.model')
-    print(rmi.ContextVectors)
+    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/50accu_no_stemming.model')
+    #print(len(rmi.ContextVectors))
+    from scipy import spatial
 
-    #rmi.is_similar_to(word="man", thres=0.9, count=10)
+    print(1-spatial.distance.cosine((rmi.ContextVectors['man']+rmi.ContextVectors['woman'])/2,
+                             rmi.ContextVectors['person']))# .964
+
+
     #file_context(rmi=rmi, path="/home/tobias/Dokumente/testdata/Newspapers/Crown_with_metadata")
     #normed_matrix = normalize_matrix(matrix)
 
-    #rmi.is_similar_to(word="man", thres=0.1, count=10)
+
 
     #print(rmi.ContextVectors.keys())
 
     """
         Dim-Red
     """
-    rmi.reduce_dimensions(method="truncated_svd", target_size=50)
-    #rmi.reduce_dimensions(method="mds", target_size=2)
-    # #rmi.is_similar_to(word="2012_partei_der_vernunft", thres=0.1, count=10)
-    #keys, matrix = rmi.to_matrix()
 
+    #rmi.reduce_dimensions(method="truncated_svd", target_size=50)
+    #rmi.write_model_to_file('/home/tobias/Dokumente/saved_context_vectors/newsgroups/50accu_no_stemming.model')
+    # for i in range(10):
+    #rmi.is_similar_to(word="person",method="jaccard")
+    # rmi.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/oanc/stemming_d50written.model")
+
+    #rmi.reduce_dimensions(method="tsne", target_size=2)
+    #rmi.is_similar_to(word="man")
+    # keys, matrix = rmi.to_matrix()
+    #
     # fig = plt.figure()
     # ax = fig.add_subplot(111)
     # plt.plot(matrix[:,0],matrix[:,1],'ro')
@@ -300,26 +304,29 @@ def main():
         Kd-Baum (als Funktion)
     """
 
-    keys, kdt = rmi.to_tree(method="minkowski", leaf_size=50)
+    # keys, kdt = rmi.to_tree(method="minkowski", leaf_size=50)
     #
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim2.tree", 'wb') as output:
+    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_no_stemming.tree", 'wb') as output:
     #     pickle.dump(kdt, output)
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim2.keys", 'wb') as output:
+    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_no_stemming.keys", 'wb') as output:
     #     pickle.dump(keys, output)
 
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.keys", 'rb') as inputFile:
+    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_no_stemming.keys", 'rb') as inputFile:
     #     keys = pickle.load(inputFile)
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'rb') as inputFile:
-    #     kdt = pickle.load(inputFile)
-
-    search_tree_for_similar(kdt, keys, method="query", n=10, word="man")
-
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.keys", 'rb') as inputFile:
-    #     keys = pickle.load(inputFile)
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim.tree", 'rb') as inputFile:
+    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_no_stemming.tree", 'rb') as inputFile:
     #     kdt = pickle.load(inputFile)
     #
-    # search_tree_for_similar(kdt, keys, method="query", n=10, word="women")
+    # from nltk.stem.snowball import SnowballStemmer
+    # word = SnowballStemmer("english",ignore_stopwords=False).stem("man")
+    # search_tree_for_similar(kdt, keys, method="query", n=20, word=word)
+
+    # with open("/home/tobias/Dokumente/saved_context_vectors/paratest/word_sim.keys", 'rb') as inputFile:
+    #     keys = pickle.load(inputFile)
+    # with open("/home/tobias/Dokumente/saved_context_vectors/paratest/word_sim.tree", 'rb') as inputFile:
+    #     kdt = pickle.load(inputFile)
+    #
+    #for i in range(10):
+    #search_tree_for_similar(kdt, keys, method="query", n=10, word="man")
 
 
 if __name__ == '__main__':
