@@ -10,7 +10,7 @@ from sklearn.neighbors import KDTree
 import numpy as np
 import pickle
 from rindex import IndexVectorSciPy as IndexVec
-
+from t_helper import *
 
 import operator
 # fix_vec = lambda input:[(number,number+0.0001)[number == 0.0] for
@@ -251,10 +251,10 @@ class RIModel:
 					if max_sim<sim:
 						max_sim = sim
 						max_word = key
-						#print(key,max_sim)
+						print(key,max_sim)
 			sum_time += time.time()-start
 
-		print(sum_time/1,method)
+		#print(sum_time/1,method)
 		print("max",max_word, max_sim)
 		#print("searching original structure for {0} took me {1} sec.".format(count, time.time() - start))
 
@@ -298,6 +298,8 @@ class RIModel:
 			print(">50 dim is not recommended. please reduce first.")
 			return
 		keys, leafs = self.to_matrix(to_sparse=False)
+		from sklearn.preprocessing import normalize
+		leafs = normalize(leafs, axis=1, norm='l2')
 		return keys, KDTree(leafs, leaf_size=leaf_size, metric=method)
 
 

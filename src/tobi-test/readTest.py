@@ -23,6 +23,19 @@ from sklearn.neighbors import KDTree
 import matplotlib.pyplot as plt
 
 
+def get_weight_vector(context_size=2, target_index=1):
+    """
+    e.g. 0.75 0 0.75 0.25
+    :param context_size: 
+    :param target_index: 
+    :return: 
+    """
+    weights=np.zeros(context_size)
+    step_size = 1 / context_size
+    weights[:target_index] = np.linspace(1 - step_size, 1, num=target_index)
+    weights[target_index + 1:] = np.linspace(1, step_size, num=context_size-target_index - 1)
+    return  weights
+
 def search_tree_for_similar(kdt, keys, method="query", n=10, word=""):
     """
 
@@ -50,14 +63,16 @@ def search_tree_for_similar(kdt, keys, method="query", n=10, word=""):
         print("{0}\t{1: >#016.4f}".format(keys[i], d))
 
 
-def analyze_file_by_context(filename, rmi, contextSize = 2):
+def analyze_file_by_context(filename, rmi, context_size=2):
     """
     
     :param filename: 
     :param rmi: 
-    :param contextSize: 
+    :param context_size: 
     :return: 
     """
+    index = 1
+    weights = get_weight_vector(context_size, target_index=index)
     try:
         with open(filename,'r' ,encoding='utf-8') as fin:
             text = fin.read()
@@ -77,14 +92,16 @@ def analyze_file_by_context(filename, rmi, contextSize = 2):
         try:
             for j in range(len(sent)):
                 context = []
-                for k in range(j, j+contextSize):
+                for k in range(j, j+context_size):
                     try:
                         context.append(sent[k])
                     except:
                         pass
                 if len(context):
                     try:
-                        rmi.add_context(context, index=0)
+                        # first creates iv by contex, second incr.
+                        #rmi.add_context(context, index=index)
+                        rmi.add_unit(context[index], context, weights=weights)
                     except:
                         pass
         except:
@@ -108,7 +125,7 @@ def analyze_text_files_of_folder(rmi, path="", contextSize = 2, ext =""):
     for i, filename in zip(range(len(files)),files):
         if i%10 == 0:
             print("\r%f %%" % (100*i/size), end="")
-        analyze_file_by_context(filename, rmi, contextSize = contextSize)
+        analyze_file_by_context(filename, rmi, context_size=contextSize)
         if i%50 == 0:
             rmi.write_model_to_file(ext)
     rmi.write_model_to_file(ext)
@@ -242,43 +259,40 @@ def main():
     dim = 1500
     k = 3
     rmi = RIModel.RIModel(dim, k)
-    context_size = 2
+    context_size = 3
     rmi.is_sparse = True
-    file_source = "/home/tobias/Dokumente/testdata/stateofunion.txt"
-    folder_source = "/home/tobias/Dokumente/testdata/OANC/data/written_2"
-    #analyze_text_files_of_folder(rmi,folder_source,context_size,"/home/tobias/Dokumente/saved_context_vectors/oanc/no_stem_d1500k3written_2.model")
+    file_source = "/home/tobias/Dokumente/testdata/wortschatz_large/eng_news_2005_1M-sentences.txt"
+    folder_source = "/home/tobias/Dokumente/testdata/Newspapers/CLOB_RAW"
+
+    """
+        build models
+    """
+    #analyze_text_files_of_folder(rmi,folder_source,context_size,"/home/tobias/Dokumente/saved_context_vectors/clob_crown/1500_k3_c3.model")
     #txt_file_by_context(rmi, path=folder_source,contextSize=2,ext="/home/tobias/Dokumente/saved_context_vectors/news.model")
-    #analyze_file_by_context(filename=file_source,rmi=rmi, contextSize=context_size)
-    #rmi.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/state_of_union_stem.model")
+    #analyze_file_by_context(filename=file_source, rmi=rmi, context_size=context_size)
+    #rmi.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/wortschatz/dim1500k3c4.model")
 
     #build_word_sim_model(rmi=rmi, path="/home/tobias/Dokumente/testdata/wortschatz_small",context_size=context_size)
     #build_parteiprogramm_model(rmi=rmi,path=folder_source)
 
-    rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/50accu_no_stemming.model')
-    #print(len(rmi.ContextVectors))
-    from scipy import spatial
-
-    print(1-spatial.distance.cosine((rmi.ContextVectors['man']+rmi.ContextVectors['woman'])/2,
-                             rmi.ContextVectors['person']))# .964
-
-
-    #file_context(rmi=rmi, path="/home/tobias/Dokumente/testdata/Newspapers/Crown_with_metadata")
-    #normed_matrix = normalize_matrix(matrix)
-
-
-
-    #print(rmi.ContextVectors.keys())
+    """
+        load models
+    """
+    #rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/wortschatz/dim1500k3c4.model')
+    #rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/clob_crown/1500_k3_c3.model')
+    #rmi.load_model_from_file('/home/tobias/Dokumente/saved_context_vectors/parteiprogramm.model')
+    #print(rmi.ContextVectors)
 
     """
         Dim-Red
     """
-
     #rmi.reduce_dimensions(method="truncated_svd", target_size=50)
     #rmi.write_model_to_file('/home/tobias/Dokumente/saved_context_vectors/newsgroups/50accu_no_stemming.model')
-    # for i in range(10):
-    #rmi.is_similar_to(word="person",method="jaccard")
     # rmi.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/oanc/stemming_d50written.model")
 
+    """
+        tsne
+    """
     #rmi.reduce_dimensions(method="tsne", target_size=2)
     #rmi.is_similar_to(word="man")
     # keys, matrix = rmi.to_matrix()
@@ -292,30 +306,46 @@ def main():
     #
     # plt.grid()
     # plt.show()
-    #
+
 
     """
         Vektor-Arithmetik
     """
-    # print(rmi.vector_add(words=["man","kid"],isword="boy")) #0.0623583290773
-    # print(rmi.vector_add(words=["waffle", "kid"], isword="church")) #0.0.0535538218819
+
+
+    # from scipy import spatial
+    #
+    # word_iv = rmi.ContextVectors['king']-rmi.ContextVectors['man']+rmi.ContextVectors['woman']
+    # # king-man ~ royal
+    # max_d = 0
+    # max_key = ""
+    # for key in rmi.ContextVectors.keys():
+    #     d = spatial.distance.cosine(word_iv.toarray(), rmi.ContextVectors[key].toarray())  # .toarray())
+    #     if max_d<d:
+    #         max_d = d
+    #         max_key = key
+    #         print(max_d, max_key)
+    # print(max_d, max_key)
+
+
+
 
     """
-        Kd-Baum (als Funktion)
+        Kd-Baum
     """
 
     # keys, kdt = rmi.to_tree(method="minkowski", leaf_size=50)
     #
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_no_stemming.tree", 'wb') as output:
+    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_4c.tree", 'wb') as output:
     #     pickle.dump(kdt, output)
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_no_stemming.keys", 'wb') as output:
+    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_4c.keys", 'wb') as output:
     #     pickle.dump(keys, output)
 
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_no_stemming.keys", 'rb') as inputFile:
-    #     keys = pickle.load(inputFile)
-    # with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_no_stemming.tree", 'rb') as inputFile:
-    #     kdt = pickle.load(inputFile)
-    #
+    with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_4c.keys", 'rb') as inputFile:
+        keys = pickle.load(inputFile)
+    with open("/home/tobias/Dokumente/saved_context_vectors/word_sim_4c.tree", 'rb') as inputFile:
+        kdt = pickle.load(inputFile)
+
     # from nltk.stem.snowball import SnowballStemmer
     # word = SnowballStemmer("english",ignore_stopwords=False).stem("man")
     # search_tree_for_similar(kdt, keys, method="query", n=20, word=word)
@@ -326,7 +356,8 @@ def main():
     #     kdt = pickle.load(inputFile)
     #
     #for i in range(10):
-    #search_tree_for_similar(kdt, keys, method="query", n=10, word="man")
+
+    search_tree_for_similar(kdt, keys, method="query", n=10, word="news")
 
 
 if __name__ == '__main__':

@@ -182,18 +182,18 @@ def main():
 
 
 if __name__ == "__main__":
-    # main()
+    main()
     # merge_models_in_folder(path="/home/tobias/Dokumente/saved_context_vectors/newsgroups/merged",
     #                        target_file="/home/tobias/Dokumente/saved_context_vectors/newsgroups/merge.model")
 
-    rim1 = RIModel.RIModel(dim=1, k=1)# dummy
-    rim2 = RIModel.RIModel(dim=1, k=1)# dummy
-    rim1.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_no_stemming.model")
-    rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/newsgroups/merge.model")
-    print(rim1.dim,rim2.dim)
-    merge_model(rim1,rim2)
-    #            rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/clob_crown/d1500k3merge.pkl"))
-    rim1.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_no_stemming.model")
+    # rim1 = RIModel.RIModel(dim=1, k=1)# dummy
+    # rim2 = RIModel.RIModel(dim=1, k=1)# dummy
+    # rim1.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_no_stemming.model")
+    # rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/newsgroups/merge.model")
+    # print(rim1.dim,rim2.dim)
+    # merge_model(rim1,rim2)
+    # #            rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/clob_crown/d1500k3merge.pkl"))
+    # rim1.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_no_stemming.model")
     #bwhole(path="/home/tobias/Dokumente/saved_context_vectors/paratest",
     #       target_file="/home/tobias/Dokumente/saved_context_vectors/paratest/accu")
 
