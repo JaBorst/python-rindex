@@ -23,7 +23,7 @@ from helpers import printProgress
 
 
 directory = "/home/jb/git/reuters-21578-json-master/data/full/"
-tmpdir = "tmp/"
+tmpdir = "tmp/ri/"
 model = "reuters.model"
 
 translate_table = dict((ord(char), None) for char in string.punctuation)
@@ -86,10 +86,10 @@ def createReutersModel():
 
 	#r.is_similar_to(word="6006")
 
-	r.write_model_to_file(model)
-	with open("reuters.places","wb") as placesOutput:
+	r.write_model_to_file(tmpdir+model)
+	with open(tmpdir+"reuters.places","wb") as placesOutput:
 		pickle.dump(places, placesOutput)
-	with open("reuters.topics","wb") as topicsOutput:
+	with open(tmpdir+"reuters.topics","wb") as topicsOutput:
 		pickle.dump(topics, topicsOutput)
 	print(set(topics))
 

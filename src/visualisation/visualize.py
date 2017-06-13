@@ -50,7 +50,7 @@ def tsneOnModel(name="dump.model"):
 		print("TSNE successfully dumped!")
 
 
-	plotOnly(name + ".tsne")
+	plotOnly(name)
 
 
 
