@@ -90,3 +90,5 @@ ENV/
 
 \.idea/
 .idea/
+
+src/Statistic/files/deu_news_2015_10K/
