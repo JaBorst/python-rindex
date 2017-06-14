@@ -92,3 +92,5 @@ ENV/
 .idea/
 
 src/Statistic/files/deu_news_2015_10K/
+
+src/Statistic/files/array\.vectors
