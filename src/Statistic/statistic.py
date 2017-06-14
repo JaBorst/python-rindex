@@ -1,7 +1,8 @@
 
 import sys
 import statistics
-
+import time
+import datetime
 from numpy.core.operand_flag_tests import inplace_add
 
 sys.path.append('../')
@@ -19,8 +20,8 @@ from helpers import printProgress
 #Statistic Parameters
 
 #input
-dim = 100
-k = 6
+dim = 1000
+k = 334
 
 
 #output
@@ -108,7 +109,9 @@ def orthogonality(inputFile):
 
 
 def stats(inputFile =""):
+	start = time.time()
 	dump = generateIndexVectors(inputFile)
+	end = time.time()
 	global orthogonalAggregates
 	orthogonality(dump)
 
@@ -128,6 +131,10 @@ def stats(inputFile =""):
 
 		statisticOutput.write("\tDimensions:\t " + str(dim) + "\n")
 		statisticOutput.write("\tk:\t " + str(k) + "\n")
+
+
+		statisticOutput.write("Time Creating the Indexvectors:\t" + str(time.strftime("%H:%M:%S", time.gmtime(end-start))) + "\n")
+
 
 
 		statisticOutput.write("\nValue Distribution\n")
@@ -175,6 +182,7 @@ def stats(inputFile =""):
 
 
 def main():
+
 	if sys.argv[1] == "gen":
 		print("Generating Wordlist")
 
@@ -191,7 +199,7 @@ def main():
 
 		# try:
 		stats(sys.argv[2])
-	import pylab as Plot
+
 
 
 if __name__ == "__main__":

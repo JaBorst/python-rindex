@@ -1,0 +1,31 @@
+Statistic Protokoll
+
+Bei Implementierung:
+
+-> IndexVector erzeugt keine konstante Anzahl an Einträgen ungleich 0
+
+
+
+
+ 3 Statistiken:
+
+ wie viele 1 und 0 ? (Kontrolle)
+
+ Zahlenverteilung gesamt
+ Anteil von 1 und -1 an Einträgen ungleich 0
+
+
+ positions verteilung ? 
+
+ Bei Dimension dim und Gleichverteilung der Position sollte jede Position die Wahrscheinlichkeit 1/dim haben
+
+
+
+ orthogonalität ? 
+
+ Winkel-Verteilung mit Standardabweichung ausrechnung
+ Ideal sollte cos = 0 sein und die Standardabweichung so klein wie möglich.
+
+  
+
+
