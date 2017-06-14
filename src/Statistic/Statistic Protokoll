@@ -26,6 +26,18 @@ Bei Implementierung:
  Winkel-Verteilung mit Standardabweichung ausrechnung
  Ideal sollte cos = 0 sein und die Standardabweichung so klein wie möglich.
 
+
+Beobachtungen:
+
+- Interessant: Verteilung der Winkel für höhere k tatsächlich ein bisschen besser (kleinere Standardabweichung)
+
+- Bei höherem k tritt immer mal cos() = 1 auf ??!
+
+- Winkel durchgehend eine Tendenz im Mittel leicht positiv zu sein, übereinstimmend mit der Messung das P(1| !0)  ( also Wahrscheinlichkeit ne 1 zu sehen wenn der Eintrag ungleich 0 ist) immer ein klein wenig größer ist P(-1|!=0) ??
+
+
+
+
   
 
 
