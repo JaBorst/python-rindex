@@ -11,9 +11,10 @@ import pickle
 from sklearn.preprocessing import normalize
 
 import matplotlib.patches as mpatches
-
 from matplotlib import colors
 
+from bokeh.plotting import figure, output_file , show, ColumnDataSource
+from bokeh.models import HoverTool
 
 tmpdir="tmp/"
 
@@ -86,10 +87,31 @@ def plotOnly(name):
 		colorArray.append(colorMap[e])
 
 	print(type(Y))
-	Plot.scatter(x=Y[:, 0], y=Y[:, 1],  c=colorArray)
-	Plot.legend(recs, topicNames, loc=4)
-	Plot.show()
+	output_file("tmp/index.html")
 
+	hover = HoverTool(
+		tooltips=[
+		("index", "$index"),
+		("(x,y)", "($x, $y)"),
+		("t", "@desc")
+	])
+
+	source = ColumnDataSource(
+		data=dict(
+			x=Y[:,0],
+			y=Y[:,1],
+			desc=labels,
+		)
+	)
+
+	# create a new plot with a title and axis labels
+	p = figure(title="simple line example", x_axis_label='x', y_axis_label='y', tools=[hover])
+
+	# add a line renderer with legend and line thickness
+	p.circle('x', 'y', legend='labels',source=source,fill_color= colorArray, fill_alpha=0.6, line_color=None, radius=1)
+
+	# show the results
+	show(p)
 
 
 
