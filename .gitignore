@@ -90,3 +90,13 @@ ENV/
 
 \.idea/
 .idea/
+
+src/misc/tmp/
+
+src/misc/reuters\.model
+
+src/misc/reuters\.places
+
+src/misc/reuters\.topics
+
+src/visualisation/tmp/
