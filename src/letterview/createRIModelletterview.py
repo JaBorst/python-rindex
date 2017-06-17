@@ -46,23 +46,23 @@ def main():
 	statsc = statsconn.cursor()
 
 	for (id, letter) in c:
-		print(id)
+		#print(id)
 
 		words = tokenizeCorpus(re.sub(' +',' ',letter.replace('\n','').replace('\r','')))
 		for w in words:
 			sql = "SELECT tf.freq *1.0/df.freq  from termfreq tf JOIN dokfreq df ON (tf.word=df.word) where tf.docID = %i and tf.word = '%s'" % (id,w.lower())
-			print(sql)
+			#print(sql)
 			res = statsc.execute(sql)
 			data = res.fetchone()
 			if data == None:
 				print("No Data Found")
 			else:
 				tfidf = data[0]
-				print(tfidf)
+				#print(tfidf)
 				ri.add_unit(unit=str(id), context=[w], weights = [tfidf])
 
-		break
 
+	ri.save_model_to_file("letterview.model")
 
 if __name__ == "__main__":
 	main()
