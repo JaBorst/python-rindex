@@ -27,7 +27,7 @@ def tokenizeCorpus(corpus=""):
 		for line in tagger.tag_text(sentence):
 			word=line.split("\t")[0]
 			pos = line.split("\t")[1]
-			print(word, pos)
+			#print(word, pos)
 			if (pos == 'NN' or pos == 'NNP' or pos == 'NNS' or pos == 'NNPS'):
 				nouns.append(word)
 	return nouns
@@ -60,9 +60,9 @@ def main():
 				tfidf = data[0]
 				#print(tfidf)
 				ri.add_unit(unit=str(id), context=[w], weights = [tfidf])
+		break
 
-
-	ri.save_model_to_file("letterview.model")
+	ri.write_model_to_file("../models/letterview.model")
 
 if __name__ == "__main__":
 	main()
