@@ -12,8 +12,7 @@ import pylab as Plot
 import json
 import os
 import sys
-from nltk.stem.snowball import GermanStemmer
-
+from nltk.stem import WordNetLemmatizer
 import pickle
 from nltk import word_tokenize
 from nltk import pos_tag
@@ -21,15 +20,18 @@ from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from nltk.tokenize import sent_tokenize
 from helpers import printProgress
+import nltk
 
+from rivis import rivis
 
-
-directory = "/home/jb/git/reuters-21578-json-master/data/full/"
-tmpdir = "tmp/ri/"
+directory = "/home/jb/git/reuters/full/"
+tmpdir = "../models/"
 model = "reuters.model"
 
 translate_table = dict((ord(char), None) for char in string.punctuation)
 stop = set(stopwords.words('english'))
+wl = WordNetLemmatizer()
+
 
 def tokenizeCorpus(corpus=""):
 	global tagger
@@ -40,12 +42,12 @@ def tokenizeCorpus(corpus=""):
 
 	for sentence in sentences:
 
-		for line in tagger.tag_text(sentence):
-			word=line.split("\t")[0]
-			pos = line.split("\t")[1]
+		for line in pos_tag(sentence):
+			word=line[0]
+			pos = line[1]
 			#print(word, pos)
 			if (pos == 'NN' or pos == 'NNP' or pos == 'NNS' or pos == 'NNPS'):
-				nouns.append(word)
+				nouns.append(wl.lemmatize(word,"n"))
 	return nouns
 
 
@@ -61,7 +63,7 @@ def tokens(body=""):
 
 def createReutersModel():
 
-	r = RIModel.RIModel(100,5)
+	r = RIModel.RIModel(1000,10)
 
 	numFiles = len(os.listdir(directory))
 	j=0
@@ -91,27 +93,29 @@ def createReutersModel():
 						printProgress(i, numEntries,
 					              prefix='File %i/%i Progress files: ' % (j, numFiles), suffix='Complete: %s' %file, barLength=50)
 
-					if article.get('body') and article.get('id') and article.get('topics') and article.get('places'):
+					if article.get('body') and article.get('id') and article.get('topics'):
 						#Filter TOPICS
-						if len(article.get('topics')) == 1 and (set(["grain", "trade","interest","livestock"]) & set(article.get('topics'))):
+						if len(article.get('topics')) == 1:
 							places.append(article.get('places')[0])
-							topics.append(list(set(["grain", "trade","interest","livestock"]) & set(article.get('topics')))[0])
-							r.add_unit(unit=article['id'], context=tokens(article['body']))
-							#break
+							topics.append(article.get('topics')[0])
+							r.add_unit(unit=article['id'], context=tokenizeCorpus(article['body']))
+			#				break
 			#break
 
 			print("done")
 		else:
 			continue
 
-	#r.is_similar_to(word="6006")
+	print("\n")
+	riv = rivis.Rivis(r)
+	riv.tsne2_calc()
+	riv.set_visualisation_dict(name="labels", data=topics)
+	riv.set_visualisation_dict(name="places", data=places)
+	riv.set_title("ReutersDataSet")
+	riv.info()
+	with open("../model/reuters.riv", "wb") as dump:
+		pickle.dump(riv, dump)
 
-	r.write_model_to_file(tmpdir+model)
-	with open(tmpdir+"reuters.places","wb") as placesOutput:
-		pickle.dump(places, placesOutput)
-	with open(tmpdir+"reuters.topics","wb") as topicsOutput:
-		pickle.dump(topics, topicsOutput)
-	print(set(topics))
 
 def main():
 	createReutersModel()

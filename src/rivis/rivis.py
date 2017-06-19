@@ -18,11 +18,13 @@ from bokeh.models import HoverTool, CategoricalColorMapper, ColorBar
 
 
 class Rivis:
+	name = ""
 
 	rimodel_file = ""
 	rimodel = RIModel.RIModel
 	rimodel_matrix = []
 	rimodel_keys = []
+
 
 
 	tsne_file = ""
@@ -31,7 +33,12 @@ class Rivis:
 	bokeh_infos = {}
 	bokeh_allowed_infos = ["labels", "colors"]
 
+	bokeh_output_file_name = "rivis"
+	bokeh_tools = "pan,wheel_zoom,box_zoom,reset"
+
 	rivis_dump = "rivis.dump"
+
+
 
 
 	X = []
@@ -40,8 +47,16 @@ class Rivis:
 
 
 	def __init__(self, rim = None):
-		if not rim:
+		if rim:
 			self.rimodel = rim
+			self.rimodel_keys, self.rimodel_matrix = self.rimodel.to_matrix()
+
+	def set_title(self, title = ""):
+		self.name = title
+		self.bokeh_output_file_name = title + ".html"
+		self.tsne_file = title + ".tsne"
+		self.rivis_dump = title + ".dump"
+		self.rimodel_file = title + ".model"
 
 	def set_model_file(self, filepath):
 		self.rimodel_file = filepath
@@ -51,17 +66,20 @@ class Rivis:
 			self.rimodel = RIModel.RIModel(dim=1,k=1)
 			self.rimodel.load_model_from_file(filepath)
 
-
 		self.rimodel_keys, self.rimodel_matrix = self.rimodel.to_matrix()
 
 
 	def tsne2_calc(self):
+		if len(self.rimodel_matrix) == 0:
+			if not self.rimodel:
+				rimodel_keys, self.rimodel_matrix = self.rimodel.to_matrix()
+
+
 		nm = np.array(self.rimodel_matrix)
 		max = np.amax(np.absolute(nm))
 		nm = nm / max
 
-
-		tsne_matrix = tsne.tsne(X=nm, no_dims=2, perplexity=40.0)
+		tsne_matrix = tsne(X=nm, no_dims=2, perplexity=40.0)
 
 		self.X = tsne_matrix[:, 0]
 		self.Y = tsne_matrix[:, 1]
@@ -76,11 +94,11 @@ class Rivis:
 		self.Y = self.tsne_matrix[:, 1]
 
 
-	def tsne2_scatter_plot(self):
+	def tsne2_scatter_plot(self, legend=True):
+		output_file(self.bokeh_output_file_name)
 		hover = HoverTool(
 			tooltips=[
 				("index", "$index"),
-				("(x,y)", "($x, $y)"),
 				("t", "@labels")
 			])
 
@@ -88,28 +106,48 @@ class Rivis:
 			data=dict(
 				x=self.X,
 				y=self.Y,
-				labels=self.bokeh_infos.get("labels", []),
+				labels=self.bokeh_infos.get("labels", self.rimodel_keys),
 			)
 		)
+		if not self.bokeh_infos.get("labels", False):
+			print("No Lables set... Using Keys...\nNo Colormapping")
 
-		if not self.bokeh_infos.get("colors", False):
+
+			p = figure(title=self.name, x_axis_label='x', y_axis_label='y', tools=self.bokeh_tools)
+			p.add_tools(hover)
+			p.circle('x', 'y',
+					 source=source,
+					 fill_alpha=0.8,
+					 fill_color='black',
+					 legend=False,
+					 line_color=None,
+					 radius=50)
+
+		elif not self.bokeh_infos.get("colors", False):
 			print("Automatic Colormapping")
 			label_set = list(set(self.bokeh_infos.get("labels", [])))
 			print(label_set)
 			ccm = CategoricalColorMapper(factors=label_set, palette=[RdBu3[2], RdBu3[0]])
 
-			p = figure(title="simple line example", x_axis_label='x', y_axis_label='y', tools=[hover])
+			p = figure(title="simple line example",
+					   x_axis_label='x',
+					   y_axis_label='y',
+					   tools=self.bokeh_tools)
+			p.add_tools(hover)
 			p.circle('x', 'y',
 					 source=source,
 					 fill_alpha=0.6,
 					 fill_color={'field': 'labels', 'transform': ccm},
-					 legend='labels',
+					 legend=False,
 					 line_color=None,
 					 radius=0.5)
 			p.legend.click_policy = "mute"
+
+
 		show(p)
 
 	def tsne2_layer_plot(self):
+		output_file(self.bokeh_output_file_name)
 
 		hover = HoverTool(
 			tooltips=[
@@ -153,23 +191,11 @@ class Rivis:
 			p.legend.click_policy = "mute"
 			show(p)
 
-			#
-			#
-			# ccm = CategoricalColorMapper(factors=label_set, palette=[RdBu3[2], RdBu3[0]])
-			#
-			# p.circle('x', 'y',
-			# 		 source=source,
-			# 		 fill_alpha=0.6,
-			# 		 fill_color={'field': 'labels', 'transform': ccm},
-			# 		 legend='labels',
-			# 		 line_color=None,
-			# 		 radius=0.5)
-			# p.legend.click_policy = "mute"
-
 
 
 
 	def tsne2_image_plot(self):
+		output_file(self.bokeh_output_file_name)
 		topicNames = list(set(self.bokeh_infos.get("labels", [])))
 		colorArray = []
 		colorMap = {}
@@ -205,10 +231,10 @@ class Rivis:
 
 
 
-
 	def info(self):
 		print("\n\n______________________________________________________________________________")
 		print ("Info about Rivis Visualization Object")
+		print ("Rivis Dump Name : %s" % (self.rivis_dump) )
 		print ("Current Model: %s" % (self.rimodel_file) )
 		print ("Current DataSize: X:%i  Y:%i  Z:%i" % (len(self.X), len(self.Y), len(self.Z)))
 		print ("Current Number Keys: %i  \t%s" % (len(self.rimodel_keys), ", ".join(self.rimodel_keys[:5]) + ", ..." ))
