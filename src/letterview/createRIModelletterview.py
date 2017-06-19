@@ -13,6 +13,8 @@ import nltk
 from collections import Counter
 import re
 
+from misc.helpers import printProgress
+
 tagger = treetaggerwrapper.TreeTagger(TAGLANG='de')
 
 def tokenizeCorpus(corpus=""):
@@ -46,11 +48,14 @@ def main():
 	statsc = statsconn.cursor()
 
 	for (id, letter) in c:
+		printProgress(id, 1000,
+		              prefix='File %i/%i Progress files: ' % (id, 1000), suffix='Complete', barLength=50)
+
 		#print(id)
 
 		words = tokenizeCorpus(re.sub(' +',' ',letter.replace('\n','').replace('\r','')))
 		for w in words:
-			sql = "SELECT tf.freq *1.0/df.freq  from termfreq tf JOIN dokfreq df ON (tf.word=df.word) where tf.docID = %i and tf.word = '%s'" % (id,w.lower())
+			sql = "SELECT tf.freq *1.0/df.freq  from termfreq tf JOIN dokfreq df ON (tf.word=df.word) where tf.docID = %i and tf.word = '%s'" % (id,w.lower().replace("'","''"))
 			#print(sql)
 			res = statsc.execute(sql)
 			data = res.fetchone()
@@ -60,7 +65,7 @@ def main():
 				tfidf = data[0]
 				#print(tfidf)
 				ri.add_unit(unit=str(id), context=[w], weights = [tfidf])
-		break
+
 
 	ri.write_model_to_file("../models/letterview.model")
 
