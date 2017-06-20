@@ -93,7 +93,7 @@ def tokens(body=""):
 
 
 def createWikiPlotsModel():
-	titleFile = "/home/jb/git/wikiplots/titles1000.gz"
+	titleFile = "/home/jb/git/wikiplots/titles.gz"
 	storyFile = "/home/jb/git/wikiplots/plots.gz"
 
 
@@ -125,6 +125,7 @@ def createWikiPlotsModel():
 
 
 		print("\n")
+		ri.write_model_to_file("../models/wikiplots.model")
 		riv = rivis.Rivis(ri)
 		riv.tsne2_calc()
 		riv.set_visualisation_dict(name = "labels", data = titles)
