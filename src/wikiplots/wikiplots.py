@@ -16,7 +16,6 @@ from nltk import pos_tag
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize
 from helpers import printProgress
-
 import nltk
 import gzip
 import re
