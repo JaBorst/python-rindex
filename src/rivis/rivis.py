@@ -69,7 +69,7 @@ class Rivis:
 		self.rimodel_keys, self.rimodel_matrix = self.rimodel.to_matrix()
 
 
-	def tsne2_calc(self):
+	def tsne2_calc(self, iterations=1000):
 		if len(self.rimodel_matrix) == 0:
 			if not self.rimodel:
 				rimodel_keys, self.rimodel_matrix = self.rimodel.to_matrix()
@@ -79,7 +79,7 @@ class Rivis:
 		max = np.amax(np.absolute(nm))
 		nm = nm / max
 
-		tsne_matrix = tsne(X=nm, no_dims=2, perplexity=40.0)
+		tsne_matrix = tsne(X=nm, no_dims=2, perplexity=40.0, iter=iterations)
 
 		self.X = tsne_matrix[:, 0]
 		self.Y = tsne_matrix[:, 1]
@@ -104,9 +104,9 @@ class Rivis:
 
 		source = ColumnDataSource(
 			data=dict(
-				x=self.X,
-				y=self.Y,
-				labels=self.bokeh_infos.get("labels", self.rimodel_keys),
+				x=self.X[:500],
+				y=self.Y[:500],
+				labels=self.bokeh_infos.get("labels", self.rimodel_keys)[:500],
 			)
 		)
 		if not self.bokeh_infos.get("labels", False):
@@ -121,7 +121,7 @@ class Rivis:
 					 fill_color='black',
 					 legend=False,
 					 line_color=None,
-					 radius=50)
+					 radius=0.05)
 
 		elif not self.bokeh_infos.get("colors", False):
 			print("Automatic Colormapping")

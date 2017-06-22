@@ -13,7 +13,7 @@ import nltk
 from collections import Counter
 import re
 
-from misc.helpers import printProgress
+from helpers import printProgress
 
 tagger = treetaggerwrapper.TreeTagger(TAGLANG='de')
 
