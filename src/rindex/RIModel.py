@@ -21,17 +21,23 @@ class RIModel:
 	"""
 	RIModel - Random IndexVector Model
 	"""
-	ContextVectors = {}
+	# das ist eher ungeschickt bei der paralellen verarbeitung.
+	# -> keine klassenvariable
+	#ContextVectors = {}
 	iv = IndexVec.IndexVector
 	dim = 0
 	k = 0
-	index_memory = {}
+	index_memory = {} # kann so bleiben
 	is_sparse = True
 
 	def __init__(self, dim=0, k=0):
 		self.dim = dim
 		self.k = k
 		self.iv = IndexVec.IndexVector(dim, k)
+		self.ContextVectors = {}
+		self.word_count = {}
+
+
 
 	def write_model_to_file(self, filename = "dump.model"):
 		"""
@@ -41,6 +47,7 @@ class RIModel:
 		print("write model to ",filename)
 		with open(filename, 'wb') as output:
 			pickle.dump(self.ContextVectors, output)
+
 
 	def load_model_from_file(self, filename):
 		"""
@@ -60,6 +67,9 @@ class RIModel:
 			self.is_sparse = False
 			self.dim = len(some_element)
 
+
+
+
 	def add_document(self, context=[]):
 		"""     Takes the Context array as the context of its entries and each element of the array as word
 		"""
@@ -70,7 +80,7 @@ class RIModel:
 								self.ContextVectors[word] = sp.coo_matrix((self.dim, 1))
 			self.ContextVectors[word] += self.iv.create_index_vector_from_context(word)
 
-	def add_context(self, context = [], index = 0, mask = None):
+	def add_context(self, context = [], index = 0):
 		"""Add a self defined Context for a specifix word with index , possibly with a weight mask
 		   default: index = 0 ( the first word in the array ) , if no
 		mask given all contexts are weighted 1
@@ -78,21 +88,15 @@ class RIModel:
 		:param index:
 		:param mask:
 		"""
-		if not mask:
-			mask = [1] * len(context)
-		# für jedes word im Kontext wird dessen IndexVector auf den Kontextvektor
-		# addiert. Der Vektor bezieht sich im default-Fall auf das 1. Wort.
 
-		## maske kann in der funktion darüber implementiert werden
-		## frage: bezieht sich das word im context auf sich selbst?
 
 		if context[index] in self.ContextVectors.keys():
 			pass
 		else:
 			self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
 
-		#rest = context[:index] + context[index+1:]-> should not be done here
-		self.ContextVectors[context[index]] += self.iv.create_index_vector_from_context(context)
+		rest = context[:index] + context[index+1:]#-> should not be done here
+		self.ContextVectors[context[index]] += self.iv.create_index_vector_from_ordered_context(rest)
 
 		# for word, weight in zip(context, mask):
 		# 	if word == context[index]:
@@ -108,7 +112,6 @@ class RIModel:
 		"""     Explicitly Specify the unit of interest and and the units of context.
 				That way you can specify a document as unit of interest and the contained words as "contexts" for example
 		"""
-
 		#check if enough weights present:
 		if len(weights)!=0 and len(context) != len(weights):
 			raise ValueError("Not Matching Array Lengths in addUnit()")
@@ -125,9 +128,14 @@ class RIModel:
 		#add every context unit to the unit of interest (and save to memory for now)
 		for entry in context:
 			if entry not in self.index_memory.keys():
-				#print(entry, " not found. Creating new Vector...")
-				self.index_memory[entry] = self.iv.create_index_vector_from_context([entry])
-			self.ContextVectors[unit] += self.index_memory[entry] * weights[context.index(entry)]
+			 	self.index_memory[entry] = self.iv.create_index_vector_from_context([entry])
+
+			self.ContextVectors[unit] += self.index_memory[entry]*(weights[context.index(entry)])
+
+			#self.ContextVectors[unit] += self.iv.create_index_vector_from_context([entry]) * weights[context.index(entry)]
+
+
+
 
 	def get_similarity_cos(self, word1, word2):
 		"""    Calculate the Cosine-Similarity between the two elements word1 and word2
@@ -241,29 +249,26 @@ class RIModel:
 			print("Word not in context")
 			return
 		i = 0
-		sims = {}
 		start = time.time()
 		max_sim=0.0
 		max_word=""
 
-		for key in self.ContextVectors.keys():
-			if key != word:
-				sim = self.get_similarity(word, key, method="cos")
-				sims[key] = sim
-				#print(sim)
+		sum_time = 0.0
+		for i in range(1):
+			start = time.time()
+			for key in self.ContextVectors.keys():
+				if key != word:
+					sim = self.get_similarity(word, key, method=method)
 
-				if max_sim<sim:
-					max_sim = sim
-					max_word = key
-					print(key,max_sim)
+					if max_sim<sim:
+						max_sim = sim
+						max_word = key
+						print(key, sim)
 
-				# if sim > thres and i < count:
-				# 	print(key, sim)
-				# 	i += 1
-				# if i > count:
-				# 	break
-		print("max",max_word, max_sim)
-		print("searching original structure for {0} took me {1} sec.".format(count, time.time() - start))
+			sum_time += time.time()-start
+		#print(sum_time/1,method)
+		#print("max",max_word, max_sim)
+		#print("searching original structure for {0} took me {1} sec.".format(count, time.time() - start))
 
 					# hier geht was schief, muss aber auch nich unbedingt
 		# if i < count:
@@ -323,22 +328,21 @@ class RIModel:
 		"""
 
 		if method == "random_projection" or method == "truncated_svd":
-			keys, target_martix = self.to_matrix(to_sparse=True)
+			keys, target_matrix = self.to_matrix(to_sparse=True)
 
 		elif method == "mds" or method == "tsne":
-			keys, target_martix = self.to_matrix(to_sparse=False)
+			keys, target_matrix = self.to_matrix(to_sparse=False)
 			target_size = 2
 
-		print("Reduce ", target_martix.shape[1], " to ", target_size)
-		self.ContextVectors = {}  # reset dicct
+		print("Reduce ", target_matrix.shape[1], " to ", target_size)
 		if method == "random_projection":
 			"""
 				SPARSE_RANDOM_PROJECTION
 			"""
 			print("using SparseRandomProjection...")
 			from sklearn.random_projection import SparseRandomProjection
-			sparse = SparseRandomProjection(n_components=target_martix)
-			red_data = sparse.fit_transform(target_martix)
+			sparse = SparseRandomProjection(n_components=target_size)
+			red_data = sparse.fit_transform(target_matrix)
 			self.is_sparse = True
 
 		elif method == "truncated_svd":
@@ -348,7 +352,7 @@ class RIModel:
 			from sklearn.decomposition import TruncatedSVD
 			print("using TruncatedSVD...")
 			svd = TruncatedSVD(n_components=target_size, n_iter=10, random_state=42)
-			red_data = svd.fit_transform(target_martix)
+			red_data = svd.fit_transform(target_matrix)
 			print("sd-sum is:\t", svd.explained_variance_ratio_.sum())
 			self.is_sparse = False
 
@@ -361,16 +365,17 @@ class RIModel:
 			seed = np.random.RandomState(seed=3)
 			mds = manifold.MDS(n_components=2, max_iter=10, eps=1e-6, random_state=seed,
 							dissimilarity="euclidean", n_jobs=2, verbose=1)
-			red_data = mds.fit_transform(target_martix)#.embedding_
-			self.is_sparse = True
+			red_data = mds.fit_transform(target_matrix)#.embedding_
+			self.is_sparse = False
 
 		elif method == "tsne":
 			from sklearn.manifold import TSNE
 			print("use tsne")
 			model = TSNE(n_components=2, random_state=0, metric='euclidean')
 			np.set_printoptions(suppress=True)
-			red_data = model.fit_transform(target_martix)
-			self.is_sparse = True
+			red_data = model.fit_transform(target_matrix)
+			self.is_sparse = False
+		self.ContextVectors = {}  # reset dicct
 
 		for i, key in zip(range(len(keys)),keys):
 				self.ContextVectors[key] = red_data[i]

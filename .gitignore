@@ -100,3 +100,5 @@ src/misc/reuters\.places
 src/misc/reuters\.topics
 
 src/visualisation/tmp/
+
+src/tobi-test/
