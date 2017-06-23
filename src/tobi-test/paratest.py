@@ -5,12 +5,16 @@ import multiprocessing
 import pickle
 from t_helper import get_paths_of_files
 from t_helper import clean_word_seq
+from readTest import get_weight_vector
 from nltk.tokenize import word_tokenize as w_tokenize
 from nltk.tokenize import sent_tokenize as s_tokenize
 from rindex import *
 import os.path
+import time
 
-
+"""
+            BUILD-MODEL-FUNCTIONS
+"""
 def bm_on_file(filename, f_number, context_size=2, dim=1500, k=3):
     """
     
@@ -35,13 +39,16 @@ def bm_on_file(filename, f_number, context_size=2, dim=1500, k=3):
         except:
             print("error with ",filename)
             return
+    index =1
+    weights = get_weight_vector(context_size, target_index=index)
+
     sents = s_tokenize(text)
     size = len(sents)
     rmi = RIModel.RIModel(dim, k)
     # rmi.is_sparse = True
     for i, sent in zip(range(len(sents)), sents):
-    #     if i % 100 == 0:
-    #         print("\r%f %%" % (100 * i / size), end="")
+        # if i % 100 == 0:
+        #     print("\r%f %%" % (100 * i / size), end="")
         sent = clean_word_seq(w_tokenize(sent))
         if not sent:
             continue
@@ -54,13 +61,12 @@ def bm_on_file(filename, f_number, context_size=2, dim=1500, k=3):
                     pass
             if len(context):
                 try:
-                    rmi.add_context(context, index=0)
+                    #rmi.add_context(context, index=0)
+                    rmi.add_unit(context[index], context, weights=weights)
                 except:
                     pass
-                    # break
-    fout = "/home/tobias/Dokumente/saved_context_vectors/newsgroups/working/word_sim"+str(f_number)+".model"
+    fout = "/home/tobias/Dokumente/models/working/"+str(f_number)+".model"
     rmi.write_model_to_file(fout)
-    # break
 
 
 # def merge_model(self, rim2):
@@ -101,7 +107,6 @@ def merge_model(rim1, rim2):
             rim1.ContextVectors[key] = rim2.ContextVectors[key]
 
 
-
 def merge_models_in_folder(path="", target_file=""):
     """
     
@@ -112,9 +117,9 @@ def merge_models_in_folder(path="", target_file=""):
     model_files = get_paths_of_files(path, filetype=".model")
     rim1 = RIModel.RIModel(dim=1, k=1)# dummy
     rim2 = RIModel.RIModel(dim=1, k=1)# dummy
-
     print("start merging.")
     rim1.load_model_from_file(model_files[0])
+
     size= len(model_files)
     for i in range(1,len(model_files)):
         if i % 10 == 0:
@@ -134,66 +139,92 @@ def merge_models_in_folder(path="", target_file=""):
     # with open("/home/tobias/Dokumente/saved_context_vectors/newsgroups/word_sim.keys", 'wb') as output:
     #     pickle.dump(keys, output)
 
+def split_text_file(filename="", chunks=1):
+    """
+
+    :param filename:
+    :param chunks:
+    :return:
+    """
+    with open(filename, 'r', encoding='utf-8') as fin:
+        text = fin.readlines()
+    lines_in_new_file = int(len(text) / chunks)
+    index = 0
+    for i in range(chunks):
+        n_filename= os.path.split(filename)[0]+"/"+str(i)
+        with open(n_filename, 'a') as fout:
+            for j in range(lines_in_new_file):
+                fout.write(text[index]+"\n")
+                index+=1
+
 
 def main():
-    base_path = "/home/tobias/Dokumente/testdata/20_newsgroups/"
-    target_path= "/home/tobias/Dokumente/saved_context_vectors/newsgroups/working"
-    procs = 1
+    base_path = "/home/tobias/Dokumente/testdata/wortschatz_small/"
+    target_path= "/home/tobias/Dokumente/models/wortschatz/working"
+    procs = 3
     k = 3
     dim = 1500
-    context_size = 2
+    context_size = 3
     num_folder = len(next(os.walk(base_path))[1])
     f_n = 0
-    for source_path in next(os.walk(base_path))[1]:
-        print(source_path)
-        print("total process\n")
-        print("\r%f %%" % (100 * f_n / num_folder), end="")
-        f_n +=1
-        source_path = base_path + source_path
-        files = get_paths_of_files(source_path, filetype="")
-        if not os.path.exists(target_path):
-            os.makedirs(target_path)
+    print(num_folder)
+    # for source_path in next(os.walk(base_path))[1]:
+    #
+    #     print(source_path)
+    #     print("total process\n")
+    #     print("\r%f %%" % (100 * f_n / num_folder), end="")
+    #     f_n +=1
+    source_path = base_path# + source_path
+    files = get_paths_of_files(base_path, filetype=".txt")
+    if not os.path.exists(target_path):
+        os.makedirs(target_path)
 
-        size = len(files)
+    size = len(files)
+    print(size)
 
-        for i in range(0,len(files),procs):
-            if i % 10 == 0:
-                print("\r%f %%" % (100 * i / size), end="")
-            jobs = []
-            for j in range(0, procs):
-                if i+j < len(files):
-                    process = multiprocessing.Process(target=bm_on_file,
-                                                      args=(files[i+j],i+j,context_size, dim, k))
+    for i in range(0,len(files),procs):
+        if i % 1 == 0:
+            print("\r%f %%" % (100 * i / size), end="")
+        jobs = []
+        for j in range(0, procs):
+            if i+j < len(files):
+                process = multiprocessing.Process(target=bm_on_file,
+                                                  args=(files[i+j],i+j,context_size, dim, k))
                 jobs.append(process)
 
-            for j in jobs:
-                j.start()
-            # Ensure all of the processes have finished
-            for j in jobs:
-                j.join()
+        for j in jobs:
+            j.start()
+        # Ensure all of the processes have finished
+        for j in jobs:
+            j.join()
         # # at the end merge models
-        target_file = os.path.split(target_path)[0] \
-                      + "/merged"+ "/" + os.path.split(source_path)[1].replace('.','_')\
-                      + ".model"
-        merge_models_in_folder(path=target_path,
-                               target_file=target_file)
-        from shutil import rmtree
-        rmtree(target_path)
+    target_file = os.path.split(target_path)[0] \
+                  + "/merged"+ "/" + os.path.split(base_path)[1].replace('.','_')\
+                  + ".model"
+    # merge_models_in_folder(path=target_path,
+    #                          target_file=target_file)
+    # from shutil import rmtree
+    # rmtree(target_path)
 
 
 if __name__ == "__main__":
-    main()
-    # merge_models_in_folder(path="/home/tobias/Dokumente/saved_context_vectors/newsgroups/merged",
-    #                        target_file="/home/tobias/Dokumente/saved_context_vectors/newsgroups/merge.model")
+    #split_text_file("/home/tobias/Dokumente/testdata/wortschatz_small/2008/eng_news_2008_10K-sentences.txt",10)
+    # start = time.time()
+    # main()
+    # end = time.time() - start
+    # print("took me {} s".format(end))
+    # merge_models_in_folder(path="/home/tobias/Dokumente/saved_context_vectors/wortschatz/merged",
+    #                        target_file="/home/tobias/Dokumente/saved_context_vectors/wortschatz/dim1500k3c3.model")
 
+    #
     # rim1 = RIModel.RIModel(dim=1, k=1)# dummy
     # rim2 = RIModel.RIModel(dim=1, k=1)# dummy
-    # rim1.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_no_stemming.model")
-    # rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/newsgroups/merge.model")
+    # rim1.load_model_from_file("/home/tobias/Dokumente/models/state_of_union_1500k3c3.model")
+    # rim2.load_model_from_file("/home/tobias/Dokumente/models/oanc_1500k3c3_merge.model")
     # print(rim1.dim,rim2.dim)
     # merge_model(rim1,rim2)
-    # #            rim2.load_model_from_file("/home/tobias/Dokumente/saved_context_vectors/clob_crown/d1500k3merge.pkl"))
-    # rim1.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/d1500accu_no_stemming.model")
+    # # #            rim2.load_model_from_file("/home/tobias/Dokumente/models/clob_crown/d1500k3merge.pkl"))
+    # rim1.write_model_to_file("/home/tobias/Dokumente/models/complete_merge1500k3c3.model")
     #bwhole(path="/home/tobias/Dokumente/saved_context_vectors/paratest",
     #       target_file="/home/tobias/Dokumente/saved_context_vectors/paratest/accu")
 
