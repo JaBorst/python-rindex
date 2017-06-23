@@ -30,7 +30,7 @@ class RIModel:
 	index_memory = {} # kann so bleiben
 	is_sparse = True
 
-	def __init__(self, dim=0, k=0):
+	def __init__(self, dim=1, k=1):
 		self.dim = dim
 		self.k = k
 		self.iv = IndexVec.IndexVector(dim, k)
