@@ -278,55 +278,7 @@ class RIModel:
 				heapq.heappop(results)
 
 		for x in results:
-			print(x[1].replace("\n",""),":\t",x[0])
-
-
-	@timeit
-	def is_similar_to_dep(self, word="", count=10, method="cos"):
-		""" Returns words with the least distance to the given word.
-		The combination of threshold and count can be used e.g. for
-		testing to get a small amount of words (and stop after that).
-		:param word:
-		:param thres:
-		:param count
-		:return list of similar words
-		"""
-		if len(word) == 0:
-			return
-		try:
-			# check if ContextVector exists
-			self.ContextVectors[word]
-		except:
-			print("Word not in context")
-			return
-
-		i = 0
-
-		max_sim = 0.0
-		max_word = ""
-
-		sum_time = 0.0
-		for i in range(1):
-			start = time.time()
-			for key in self.ContextVectors.keys():
-				if key != word:
-					sim = self.get_similarity(word, key, method=method)
-
-					if max_sim < sim:
-						max_sim = sim
-						max_word = key
-						print(key.replace("\n",""), sim)
-
-					# print(sum_time/1,method)
-					# print("max",max_word, max_sim)
-					# print("searching original structure for {0} took me {1} sec.".format(count, time.time() - start))
-
-					# hier geht was schief, muss aber auch nich unbedingt
-					# if i < count:
-					#     print("\n\n {0} most similar words".format(count) )
-					#     best_n = dict(sorted(sims.items(), key=operator.itemgetter(1), reverse=True)[:count])
-					#     for word in best_n.keys():
-					#         print(word,"\t\t", best_n[word])
+			print(x[1],":\t",x[0])
 
 
 
@@ -481,34 +433,6 @@ class RIModel:
 				print(":\t", x)
 
 	@timeit
-	def most_similar_dep(self, count=10, file=None):
-		""" Compare all words in model. (Takes long Time)
-		Isn't that one reason why we need dim-reduction?
-		:param count:
-		:param file:
-		:return:
-		"""
-		simDic = []
-		keys = self.ContextVectors.keys()
-		tuples = list(itertools.combinations(keys, 2))
-		print("Comparing everything...")
-
-		i = 0
-		size = len(tuples)
-		results = []
-		least_similarity = 0
-		for pair in tuples:
-			i += 1
-			if i % 1000==0:
-				print("\r%f %%" % (100 * i / size), end="")
-			simDic.append([pair[0], pair[1], self.get_similarity_cos(pair[0], pair[1])])
-		print("Sorting...")
-		simDic.sort(key=lambda x: x[2], reverse=True)
-		for x in range(count):
-			if x < len(simDic):
-				print(x, ":\t", simDic[x])
-
-	@timeit
 	def truncate(self, threshold=0.1, copy=False):
 		keys, target_matrix = self.to_matrix(to_sparse=True)
 		from sklearn.preprocessing import MaxAbsScaler
@@ -551,7 +475,7 @@ def main():
 
 	# r.writeModelToFile()
 	r = RIModel()
-	filename = "/run/media/jb/Black/wikiplots10000nouns.model"
+	filename = "/home/jb/git/wikiplots10000nouns.model"
 	r.load_model_from_file(filename)
 
 	# keys, matrix = r.to_matrix(to_sparse=True)
@@ -575,8 +499,8 @@ def main():
 	# print("JACC: ",r.get_similarity_jaccard("hello", "hello"))
 	#r.is_similar_to(word ="hello", count = 10)
 	# print(list(r.ContextVectors.keys())[:10])
-	r.is_similar_to("Animal Farm\n",count=20)
-	r.is_similar_to_dep("Animal Farm\n",count=20)
+	r.is_similar_to("Animal Farm\n",count=5)
+
 
 	#r.most_similar(count=5)
 	#r.most_similar_dep(count=5)
