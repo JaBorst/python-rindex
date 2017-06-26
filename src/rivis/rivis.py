@@ -75,6 +75,9 @@ class Rivis:
 
 		self.rimodel_keys, self.rimodel_matrix = self.rimodel.to_matrix()
 
+	def truncate(self, treshold = 0.1):
+		self.rimodel.truncate(threshold=treshold)
+		self.rimodel_keys, self.rimodel_matrix = self.rimodel.to_matrix()
 
 	def tsne2_calc(self, iterations=1000):
 		'''
@@ -96,6 +99,25 @@ class Rivis:
 		self.X = tsne_matrix[:, 0]
 		self.Y = tsne_matrix[:, 1]
 
+	def pca2_calc(self):
+		'''
+		This calculates a PCA Reduction to 2 Dimensions and saves the plotable Data internally
+		:param iterations: NUmber of Iterations for the tsne algorithm
+		:return:
+		'''
+		if len(self.rimodel_matrix) == 0:
+			if not self.rimodel:
+				self.rimodel_keys, self.rimodel_matrix = self.rimodel.to_matrix()
+		from sklearn.decomposition import PCA
+		pca = PCA(n_components=2)
+		red_data = pca.fit_transform(self.rimodel_matrix)
+		self.is_sparse = False
+
+		self.X = red_data[:, 0]
+		self.Y = red_data[:, 1]
+
+
+
 	def tsne2_load(self, modelfile =""):
 		'''
 		You can load already calculated tsne reductions by file
@@ -111,7 +133,7 @@ class Rivis:
 		self.Y = self.tsne_matrix[:, 1]
 
 
-	def tsne2_scatter_plot(self, legend=True):
+	def scatter_plot(self, legend=True):
 		'''
 		This function creates a simple scatter plot of all the data
 		:param legend: True/False
@@ -168,7 +190,7 @@ class Rivis:
 
 		show(p)
 
-	def tsne2_layer_plot(self):
+	def layer_plot(self):
 		'''
 		This creates a layer Plot of the data. Useful if labels or categorization available
 		:return:
@@ -220,7 +242,7 @@ class Rivis:
 
 
 
-	def tsne2_image_plot(self):
+	def image_plot(self):
 		'''
 		Not yet useful
 		:return:
@@ -303,7 +325,7 @@ class Rivis:
 		keys, self.rimodel_kdtree = self.rimodel.to_tree(method="minkowski", leaf_size=50)
 
 
-	def plot_similar(self, key="", number=-1, similarity_measure="jsd"):
+	def plot_similar(self, key="", number=-1, similarity_measure="jsd", circle_size=0.01):
 		#if self.rimodel_kdtree != None:
 		#	pass
 		#else:
@@ -327,9 +349,19 @@ class Rivis:
 		hover = HoverTool(
 			tooltips=[
 				("index", "$index"),
-				("t", "@labels"),
+				("x", "@x"),
+				("y", "@y"),
 				("similarity","@sim")
 			])
+
+		source = ColumnDataSource(
+			data=dict(
+				x=plotKeys,
+				y=plotKeys,
+				labels=self.bokeh_infos.get("labels", []),
+				sim=similarities,
+			)
+		)
 
 		source = ColumnDataSource(
 			data=dict(
@@ -351,10 +383,105 @@ class Rivis:
 					 legend=False,
 					 fill_color=colors,
 					 line_color=None,
-					 radius=0.1)
+					 radius=circle_size)
 
 
 		show(p)
+
+	def plot_similarity_matrix(self, ):
+		similarities = self.rimodel.most_similar(count=-1, silent=True, method="jsd")
+		plotKeys = list(set([ p[0] for (k,p) in similarities] + [ p[1] for (k,p) in similarities]))
+		plotKeys.sort()
+		print("Length: ", len(plotKeys))
+		#turn sim into dictionary for fast lookup
+		simDic = {}
+
+		for (sim, pair) in similarities:
+			simDic[pair] = sim
+
+		d = []
+		xdata = []
+		ydata = []
+		plot_similarities =[]
+		for k1 in plotKeys:
+			color_row = []
+			label_row = []
+			for k2 in plotKeys:
+				s=0
+				if k1 == k2 :
+					s = 1
+				else:
+					s = simDic.get((k1,k2),0)
+					if s == 0:
+						s = simDic.get((k2,k1),0)
+
+				#color_row.append(s)
+				d.append( "rgb(%i, %i, %i)" % (int(255-s*255),int(255-s*255),int(255-s*255)))
+				xdata.append(k1)
+				ydata.append(k2)
+				plot_similarities.append(s)
+
+		hover = HoverTool(
+			tooltips=[
+				("index", "$index"),
+				("x", "@x"),
+				("y", "@y"),
+				("similarity", "@sim"),
+
+			])
+
+		source = ColumnDataSource(
+			data=dict(
+				x=xdata,
+				y=ydata,
+				sim=plot_similarities,
+			)
+		)
+		p = figure(x_range=plotKeys, y_range=plotKeys)
+
+		# must give a vector of image data for image parameter
+		#p.rect(x=xdata, y=ydata, fill_color=d, width=1, height=100, line_color=None, height_units="screen")
+		p.square('x', 'y', source=source, fill_color=d, size=25, line_color=None)
+		p.add_tools(hover)
+		output_file("image.html", title="image.py example")
+
+		show(p)  # open a browser
+	def image_similarity_matrix(self, ):
+		similarities = self.rimodel.most_similar(count=-1, silent=True, method="jsd")
+		plotKeys = list(set([ p[0] for (k,p) in similarities] + [ p[1] for (k,p) in similarities]))
+		plotKeys.sort()
+		print("Length: ", len(plotKeys))
+		#turn sim into dictionary for fast lookup
+		simDic = {}
+
+		for (sim, pair) in similarities:
+			simDic[pair] = sim
+
+		d = []
+		xdata = []
+		ydata = []
+		plot_similarities =[]
+		img = np.zeros((len(plotKeys), len(plotKeys), 3), dtype=np.uint8)
+
+		for i, k1 in enumerate(plotKeys):
+			color_row = []
+			label_row = []
+			for j, k2 in enumerate(plotKeys):
+				s=0
+				if k1 == k2 :
+					s = 1
+				else:
+					s = simDic.get((k1,k2),0)
+					if s == 0:
+						s = simDic.get((k2,k1),0)
+
+				img[i][j][0] = int(255-s*255)
+				img[i][j][1] = int(255-s*255)
+				img[i][j][2] = int(255-s*255)
+
+		from scipy.misc import imshow, imsave
+		imshow(img)
+		imsave("image.png", img)
 
 	def Load(self):
 		f = open(self.rivis_dump,'rb')
@@ -374,8 +501,11 @@ if __name__ == "__main__":
 
 
 	riv = Rivis()
-	#riv.set_model_file("/home/jb/git/python-rindex/src/misc/reuters.model")
-	riv.tsne2_load("/home/jb/git/python-rindex/src/misc/tmp/reuters.tsne")
-	riv.load_labels("/home/jb/git/python-rindex/src/misc/reuters.topics")
-	riv.tsne2_layer_plot()
-	riv.info()
+	riv.set_model_file("/home/jb/git/python-rindex/src/models/letterview.model")
+	#riv.load_labels("/home/jb/git/python-rindex/src/misc/reuters.topics")
+	#riv.set_visualisation_dict("label2", riv.bokeh_infos["label"])
+	#riv.tsne2_load("/home/jb/git/python-rindex/src/misc/tmp/reuters.tsne")
+	#riv.load_labels("/home/jb/git/python-rindex/src/misc/reuters.topics")
+	#riv.tsne2_layer_plot()
+	#riv.info()
+	riv.image_similarity_matrix()

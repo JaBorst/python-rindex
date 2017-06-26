@@ -22,7 +22,7 @@ from helpers import printProgress
 
 
 
-directory = "/home/jb/git/reuters-21578-json-master/data/full/"
+directory = "/home/jb/git/reuters/full/"
 tmpdir = "tmp/ri/"
 model = "reuters.model"
 
@@ -67,6 +67,8 @@ def createReutersModel():
 
 				for article in data:
 					i += 1
+					if i == 200:
+						break
 					if i % 100 == 0:
 						printProgress(i, numEntries,
 					              prefix='File %i/%i Progress files: ' % (j, numFiles), suffix='Complete: %s' %file, barLength=50)
@@ -86,7 +88,7 @@ def createReutersModel():
 
 	#r.is_similar_to(word="6006")
 
-	r.write_model_to_file(tmpdir+model)
+	r.write_model_to_file("smallreuters.model")
 	with open(tmpdir+"reuters.places","wb") as placesOutput:
 		pickle.dump(places, placesOutput)
 	with open(tmpdir+"reuters.topics","wb") as topicsOutput:
