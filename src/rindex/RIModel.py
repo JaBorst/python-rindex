@@ -249,7 +249,7 @@ class RIModel:
 			return self.get_similarity_jsd(word1,word2)
 
 	@timeit
-	def is_similar_to(self, word ="", count = 10, method="cos"):
+	def is_similar_to(self, word ="", count = 10, method="cos", silent=False):
 		""" Returns words with the least distance to the given word.
 		The combination of threshold and count can be used e.g. for
 		testing to get a small amount of words (and stop after that).
@@ -277,10 +277,11 @@ class RIModel:
 			if len(results) > count:
 				heapq.heappop(results)
 
-		for x in results:
-			print(x[1],":\t",x[0])
+		if not silent:
+			for x in results:
+				print(x[1],":\t",x[0])
 
-
+		return results
 
 	def to_matrix(self, to_sparse=False):
 		"""
@@ -301,7 +302,7 @@ class RIModel:
 					target_martix[i, :] = self.ContextVectors[key].transpose().toarray()
 			else:
 				for key, i in zip(keys, i):
-					target_martix[i, :] = self.ContextVectors[key].transpose().toarray()
+					target_martix[i, :] = self.ContextVectors[key]
 		else:
 			print('invalid option')
 		print("converted dict to matrix")
@@ -405,7 +406,7 @@ class RIModel:
 										self.ContextVectors[isword])
 
 	@timeit
-	def most_similar(self, count=10, method = "cos" ,file=None):
+	def most_similar(self, count=10, method = "cos" , silent=False):
 		""" Compare all words in model. (Takes long Time)
 		Isn't that one reason why we need dim-reduction?
 		:param count:
@@ -425,12 +426,14 @@ class RIModel:
 			i += 1
 			if i % 1000==0:
 				print("\r%f %%" % (100 * i / size), end="")
-			heapq.heappush(simDic, (self.get_similarity_cos(pair[0], pair[1]) , pair) )
+			heapq.heappush(simDic, (self.get_similarity(pair[0], pair[1], method=method) , pair) )
 			if len(simDic) > count:
 				heapq.heappop(simDic)
-
-		for x in simDic:
+		if not silent:
+			for x in simDic:
 				print(":\t", x)
+
+		return simDic
 
 	@timeit
 	def truncate(self, threshold=0.1, copy=False):

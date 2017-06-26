@@ -8,7 +8,7 @@ import numpy as np
 import pickle
 from termcolor import colored
 from matplotlib import colors
-
+from sklearn.neighbors import KDTree
 
 
 from bokeh.palettes import RdBu3, Spectral4
@@ -24,7 +24,7 @@ class Rivis:
 	rimodel = RIModel.RIModel
 	rimodel_matrix = []
 	rimodel_keys = []
-
+	rimodel_kdtree = KDTree
 
 
 	tsne_file = ""
@@ -52,6 +52,11 @@ class Rivis:
 			self.rimodel_keys, self.rimodel_matrix = self.rimodel.to_matrix()
 
 	def set_title(self, title = ""):
+		'''
+		Set the Title for all outputfiles and plot titles
+		:param title:
+		:return:
+		'''
 		self.name = title
 		self.bokeh_output_file_name = title + ".html"
 		self.tsne_file = title + ".tsne"
@@ -59,17 +64,24 @@ class Rivis:
 		self.rimodel_file = title + ".model"
 
 	def set_model_file(self, filepath):
+		'''
+		You Can read in a RIModel from File
+		:param filepath:
+		:return:
+		'''
 		self.rimodel_file = filepath
-		if self.rimodel:
-			self.rimodel.load_model_from_file(filepath)
-		else:
-			self.rimodel = RIModel.RIModel(dim=1,k=1)
-			self.rimodel.load_model_from_file(filepath)
+		self.rimodel = RIModel.RIModel()
+		self.rimodel.load_model_from_file(filename=filepath)
 
 		self.rimodel_keys, self.rimodel_matrix = self.rimodel.to_matrix()
 
 
 	def tsne2_calc(self, iterations=1000):
+		'''
+		This calculates a tsne Reduction to 2 Dimensions and saves the plotable Data internally
+		:param iterations: NUmber of Iterations for the tsne algorithm
+		:return:
+		'''
 		if len(self.rimodel_matrix) == 0:
 			if not self.rimodel:
 				rimodel_keys, self.rimodel_matrix = self.rimodel.to_matrix()
@@ -85,6 +97,11 @@ class Rivis:
 		self.Y = tsne_matrix[:, 1]
 
 	def tsne2_load(self, modelfile =""):
+		'''
+		You can load already calculated tsne reductions by file
+		:param modelfile:
+		:return:
+		'''
 		self.tsne_file = modelfile
 
 		with open(modelfile, 'rb') as inputTSNE:
@@ -95,6 +112,11 @@ class Rivis:
 
 
 	def tsne2_scatter_plot(self, legend=True):
+		'''
+		This function creates a simple scatter plot of all the data
+		:param legend: True/False
+		:return:
+		'''
 		output_file(self.bokeh_output_file_name)
 		hover = HoverTool(
 			tooltips=[
@@ -147,6 +169,10 @@ class Rivis:
 		show(p)
 
 	def tsne2_layer_plot(self):
+		'''
+		This creates a layer Plot of the data. Useful if labels or categorization available
+		:return:
+		'''
 		output_file(self.bokeh_output_file_name)
 
 		hover = HoverTool(
@@ -195,6 +221,10 @@ class Rivis:
 
 
 	def tsne2_image_plot(self):
+		'''
+		Not yet useful
+		:return:
+		'''
 		output_file(self.bokeh_output_file_name)
 		topicNames = list(set(self.bokeh_infos.get("labels", [])))
 		colorArray = []
@@ -217,7 +247,12 @@ class Rivis:
 
 
 	def set_visualisation_dict(self, name = "", data = []):
-
+		'''
+		Set different visualisation infos like lables or color arrays
+		:param name: name of the data ( must be in ["labels", "colors"] )
+		:param data:
+		:return:
+		'''
 		if name in self.bokeh_allowed_infos:
 			self.bokeh_infos[name] = data
 		else:
@@ -225,6 +260,11 @@ class Rivis:
 
 
 	def load_labels(self, filepath):
+		'''
+		load labels from file
+		:param filepath:
+		:return:
+		'''
 		with open(filepath, 'rb') as inputFile:
 			labels = pickle.load(inputFile)
 			self.set_visualisation_dict("labels" , labels)
@@ -232,6 +272,10 @@ class Rivis:
 
 
 	def info(self):
+		'''
+		Prints Information about the stored data object
+		:return:
+		'''
 		print("\n\n______________________________________________________________________________")
 		print ("Info about Rivis Visualization Object")
 		print ("Rivis Dump Name : %s" % (self.rivis_dump) )
@@ -253,6 +297,64 @@ class Rivis:
 
 
 		print("______________________________________________________________________________\n")
+
+	def build_tree(self):
+		self.rimodel.reduce_dimensions(method="truncated_svd", target_size=50)
+		keys, self.rimodel_kdtree = self.rimodel.to_tree(method="minkowski", leaf_size=50)
+
+
+	def plot_similar(self, key="", number=-1, similarity_measure="jsd"):
+		#if self.rimodel_kdtree != None:
+		#	pass
+		#else:
+		if number < 0:
+			number = len(self.rimodel_keys)
+		plotKeys = self.rimodel.is_similar_to(word=key, method=similarity_measure, count=number, silent=True)
+
+		X_sim = [self.X[self.rimodel_keys.index(key)]]
+		Y_sim = [self.Y[self.rimodel_keys.index(key)]]
+		plotKeyList = [key] + [y[1] for y in plotKeys]
+		similarities = [1]
+		colors = ["red"]
+		for k in plotKeys:
+			X_sim.append(self.X[self.rimodel_keys.index(k[1])])
+			Y_sim.append(self.Y[self.rimodel_keys.index(k[1])])
+			colors.append( "rgb(%i,%i,%i)" % (int(255-k[0]*255), int(255-k[0]*255), int(255-k[0]*255)))
+			similarities.append(k[0])
+
+		print(colors)
+		output_file(self.bokeh_output_file_name)
+		hover = HoverTool(
+			tooltips=[
+				("index", "$index"),
+				("t", "@labels"),
+				("similarity","@sim")
+			])
+
+		source = ColumnDataSource(
+			data=dict(
+				x=X_sim,
+				y=Y_sim,
+				labels=plotKeyList,
+				sim = similarities,
+
+			)
+		)
+		if not self.bokeh_infos.get("labels", False):
+			print("No Lables set... Using Keys...\nNo Colormapping")
+
+			p = figure(title=self.name, x_axis_label='x', y_axis_label='y', tools=self.bokeh_tools)
+			p.add_tools(hover)
+			p.circle('x', 'y',
+					 source=source,
+					 fill_alpha=0.8,
+					 legend=False,
+					 fill_color=colors,
+					 line_color=None,
+					 radius=0.1)
+
+
+		show(p)
 
 	def Load(self):
 		f = open(self.rivis_dump,'rb')
