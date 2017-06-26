@@ -223,7 +223,8 @@ class RIModel:
 		if method == "jsd":
 			return self.get_similarity_jsd(word1,word2)
 
-	def is_similar_to(self, word ="", thres = 0.9, count = 10):
+	@timeit
+	def is_similar_to(self, word ="", count = 10, method="cos", silent=False):
 		""" Returns words with the least distance to the given word.
 		The combination of threshold and count can be used e.g. for
 		testing to get a small amount of words (and stop after that).
@@ -252,17 +253,11 @@ class RIModel:
 				sims[key] = sim
 				#print(sim)
 
-		for x in results:
-			print(x[1],":\t",x[0])
+		if not silent:
+			for x in results:
+				print(x[1],":\t",x[0])
 
-				# if sim > thres and i < count:
-				# 	print(key, sim)
-				# 	i += 1
-				# if i > count:
-				# 	break
-		print("max",max_word, max_sim)
-		print("searching original structure for {0} took me {1} sec.".format(count, time.time() - start))
-
+		return results
 
 	def to_matrix(self, to_sparse=False):
 		"""
@@ -386,6 +381,18 @@ class RIModel:
 			return 1-spatial.distance.cosine(iv_sum,
 										self.ContextVectors[isword])
 
+	@timeit
+	def most_similar(self, count=10, method = "cos" , silent=False):
+		""" Compare all words in model. (Takes long Time)
+		Isn't that one reason why we need dim-reduction?
+		:param count:
+		:param file:
+		:return:
+		"""
+		simDic = []
+		keys = self.ContextVectors.keys()
+		tuples = list(itertools.combinations(keys, 2))
+		print("Comparing everything...")
 
 		i = 0
 		size = len(tuples)
@@ -395,12 +402,14 @@ class RIModel:
 			i += 1
 			if i % 1000==0:
 				print("\r%f %%" % (100 * i / size), end="")
-			heapq.heappush(simDic, (self.get_similarity_cos(pair[0], pair[1]) , pair) )
+			heapq.heappush(simDic, (self.get_similarity(pair[0], pair[1], method=method) , pair) )
 			if len(simDic) > count:
 				heapq.heappop(simDic)
-
-		for x in simDic:
+		if not silent:
+			for x in simDic:
 				print(":\t", x)
+
+		return simDic
 
 	@timeit
 	def truncate(self, threshold=0.1, copy=False):
