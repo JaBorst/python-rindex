@@ -310,8 +310,8 @@ class RIModel:
 		if method == "random_projection" or method == "truncated_svd":
 			keys, target_martix = self.to_matrix(to_sparse=True)
 
-		elif method == "mds" or method == "tsne":
-			keys, target_martix = self.to_matrix(to_sparse=False)
+		elif method == "mds" or method == "tsne" or method == "pca":
+			keys, target_matrix = self.to_matrix(to_sparse=False)
 			target_size = 2
 
 		print("Reduce ", target_martix.shape[1], " to ", target_size)
@@ -354,8 +354,18 @@ class RIModel:
 			print("use tsne")
 			model = TSNE(n_components=2, random_state=0, metric='euclidean')
 			np.set_printoptions(suppress=True)
-			red_data = model.fit_transform(target_martix)
-			self.is_sparse = True
+			red_data = model.fit_transform(target_matrix)
+			self.is_sparse = False
+
+		elif method == "pca":
+			from sklearn.decomposition import PCA
+			print("use pca")
+			pca = PCA(n_components=target_size)
+			red_data = pca.fit_transform(target_matrix)
+			self.is_sparse = False
+
+
+		self.ContextVectors = {}  # reset dicct
 
 		for i, key in zip(range(len(keys)),keys):
 				self.ContextVectors[key] = red_data[i]
@@ -389,6 +399,9 @@ class RIModel:
 		:param file:
 		:return:
 		"""
+
+		if count < 0:
+			count = len(self.ContextVectors.keys())
 		simDic = []
 		keys = self.ContextVectors.keys()
 		tuples = list(itertools.combinations(keys, 2))
@@ -396,8 +409,6 @@ class RIModel:
 
 		i = 0
 		size = len(tuples)
-		results = []
-		least_similarity = 0
 		for pair in tuples:
 			i += 1
 			if i % 1000==0:
@@ -425,7 +436,7 @@ class RIModel:
 			print("Now %i non zero elements remain." % len(sc_target_matrix.nonzero()[0]))
 		self.ContextVectors = {}  # reset dicct
 		for i, key in zip(range(len(keys)), keys):
-			self.ContextVectors[key] = sc_target_matrix[i]
+			self.ContextVectors[key] = sc_target_matrix[i].transpose()
 
 def main():
 	"""Main function if the Module gets executed"""
@@ -436,9 +447,14 @@ def main():
 
 	# r.writeModelToFile()
 	r = RIModel()
-	filename = "/home/jb/git/wikiplots10000nouns.model"
+	filename = "/home/jb/git/python-rindex/src/reuters/smallreuters.model"
 	r.load_model_from_file(filename)
 
+	# keys, matrix = r.to_matrix(to_sparse=True)
+	# for x in matrix:
+	# 	print(x)
+	print(r.ContextVectors["1"])
+	r.truncate(threshold=0.01)
 	r.add_context(["the", "damn", "example"], index=0, mask=[0, 0.5, 0.5])
 	r.add_context(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
 	r.add_context(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
@@ -446,6 +462,11 @@ def main():
 	r.add_context(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
 	r.add_context(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
 
+	print(r.ContextVectors["1"])
+	r.to_matrix()
+	#
+	# for key in r.ContextVectors.keys():
+	# 	print(key, r.ContextVectors[key].nonzero())
 	r.add_context(["the", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
 	r.add_context(["parks", "are", "shitty"], index=0, mask=[0, 0.5, 0.5])
 
