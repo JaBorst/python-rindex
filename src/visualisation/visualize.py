@@ -60,7 +60,7 @@ def plotOnly(name):
 	Y = np.array
 	with open(tmpdir + name+".tsne", 'rb') as inputTSNE:
 		Y = pickle.load(inputTSNE)
-
+xx
 
 	labels = []
 	with open(tmpdir + name+".topics", 'rb') as inputFile:

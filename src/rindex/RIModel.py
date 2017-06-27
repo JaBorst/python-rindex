@@ -230,7 +230,8 @@ class RIModel:
 		if method == "jsd":
 			return self.get_similarity_jsd(word1,word2)
 
-	def is_similar_to(self, word ="", thres = 0.9, count = 10, method="cos"):
+	def is_similar_to(self, word ="", count = 10, method="cos", silent=False):
+	@timeit
 		""" Returns words with the least distance to the given word.
 		The combination of threshold and count can be used e.g. for
 		testing to get a small amount of words (and stop after that).
@@ -259,18 +260,11 @@ class RIModel:
 				if key != word:
 					sim = self.get_similarity(word, key, method=method)
 
-					if max_sim<sim:
-						max_sim = sim
-						max_word = key
-						print(key, sim)
+		if not silent:
+			for x in results:
+				print(x[1],":\t",x[0])
 
-			sum_time += time.time()-start
-		#print(sum_time/1,method)
-		#print("max",max_word, max_sim)
-		#print("searching original structure for {0} took me {1} sec.".format(count, time.time() - start))
-
-
-
+		return results
 
 	def to_matrix(self, to_sparse=False):
 		"""
@@ -326,7 +320,7 @@ class RIModel:
 		if method == "random_projection" or method == "truncated_svd":
 			keys, target_matrix = self.to_matrix(to_sparse=True)
 
-		elif method == "mds" or method == "tsne":
+		elif method == "mds" or method == "tsne" or method == "pca":
 			keys, target_matrix = self.to_matrix(to_sparse=False)
 			target_size = 2
 
@@ -371,6 +365,15 @@ class RIModel:
 			np.set_printoptions(suppress=True)
 			red_data = model.fit_transform(target_matrix)
 			self.is_sparse = False
+
+		elif method == "pca":
+			from sklearn.decomposition import PCA
+			print("use pca")
+			pca = PCA(n_components=target_size)
+			red_data = pca.fit_transform(target_matrix)
+			self.is_sparse = False
+
+
 		self.ContextVectors = {}  # reset dicct
 
 		for i, key in zip(range(len(keys)),keys):
@@ -397,14 +400,17 @@ class RIModel:
 			return 1-spatial.distance.cosine(iv_sum,
 										self.ContextVectors[isword])
 
-
-	def most_similar(self, count=10, file=None):
+	@timeit
+	def most_similar(self, count=10, method = "cos" , silent=False):
 		""" Compare all words in model. (Takes long Time)
 		Isn't that one reason why we need dim-reduction?
 		:param count:
 		:param file:
 		:return:
 		"""
+
+		if count < 0:
+			count = len(self.ContextVectors.keys())
 		simDic = []
 		keys = self.ContextVectors.keys()
 		tuples = list(itertools.combinations(keys, 2))
@@ -414,17 +420,32 @@ class RIModel:
 		size = len(tuples)
 		for pair in tuples:
 			i += 1
-			print("\r%f %%" % (100*i/size), end="")
-			simDic.append([pair[0], pair[1], self.get_similarity_cos(pair[0], pair[1])])
-		print("Sorting...")
-		simDic.sort(key=lambda x: x[2], reverse=True)
-		for x in range(count):
-			print(x, ":\t", simDic[x])
-		if file:
-			with open(file, 'w') as out:
-				for triple in simDic:
-					out.write(triple[0] + "\t" + triple[1] + "\t" + str(triple[2]) + "\n")
+			if i % 1000==0:
+				print("\r%f %%" % (100 * i / size), end="")
+			heapq.heappush(simDic, (self.get_similarity(pair[0], pair[1], method=method) , pair) )
+			if len(simDic) > count:
+				heapq.heappop(simDic)
+		if not silent:
+			for x in simDic:
+				print(":\t", x)
 
+		return simDic
+
+	@timeit
+	def truncate(self, threshold=0.1, copy=False):
+		keys, target_matrix = self.to_matrix(to_sparse=True)
+		from sklearn.preprocessing import MaxAbsScaler
+		m = MaxAbsScaler()
+		sc_target_matrix = m.fit_transform(target_matrix)
+		#print(sc_target_matrix)
+		if threshold != 0:
+			print("Truncate from %i non zero elements." % len(sc_target_matrix.nonzero()[0]))
+			bool_sparse_matrix = ((sc_target_matrix <= -threshold) + (sc_target_matrix >= threshold)) != (sc_target_matrix != 0)
+			sc_target_matrix[bool_sparse_matrix] = 0
+			print("Now %i non zero elements remain." % len(sc_target_matrix.nonzero()[0]))
+		self.ContextVectors = {}  # reset dicct
+		for i, key in zip(range(len(keys)), keys):
+			self.ContextVectors[key] = sc_target_matrix[i].transpose()
 
 def main():
 	"""Main function if the Module gets executed"""
@@ -433,13 +454,16 @@ def main():
 	r = RIModel(dim, k)
 	r.add_context(["hello", "world", "damn"])
 
-	r.add_context(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["hello", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["hello", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["hello", "damn", "nice"], index=0, mask=[0, 0.5, 0.5])
+	# r.writeModelToFile()
+	r = RIModel()
+	filename = "/home/jb/git/python-rindex/src/reuters/smallreuters.model"
+	r.load_model_from_file(filename)
 
+	# keys, matrix = r.to_matrix(to_sparse=True)
+	# for x in matrix:
+	# 	print(x)
+	print(r.ContextVectors["1"])
+	r.truncate(threshold=0.01)
 	r.add_context(["the", "damn", "example"], index=0, mask=[0, 0.5, 0.5])
 	r.add_context(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
 	r.add_context(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
@@ -447,6 +471,11 @@ def main():
 	r.add_context(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
 	r.add_context(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
 
+	print(r.ContextVectors["1"])
+	r.to_matrix()
+	#
+	# for key in r.ContextVectors.keys():
+	# 	print(key, r.ContextVectors[key].nonzero())
 	r.add_context(["the", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
 	r.add_context(["parks", "are", "shitty"], index=0, mask=[0, 0.5, 0.5])
 
@@ -456,10 +485,22 @@ def main():
 	# rmi.loadModelFromFile(filename)
 
 
-	print("JSD: ", r.get_similarity_jsd("hello", "parks"))
-	print("Cos: ", r.get_similarity_cos("hello", "parks"))
-	print("JACC: ",r.get_similarity_jaccard("hello", "parks"))
+	# print("JSD: ", r.get_similarity_jsd("hello", "parks"))
+	# print("Cos: ", r.get_similarity_cos("hello", "parks"))
+	# print("JACC: ",r.get_similarity_jaccard("hello", "parks"))
+	#
+	#
+	# print("JSD: ", r.get_similarity_jsd("hello", "hello"))
+	# print("Cos: ", r.get_similarity_cos("hello", "hello"))
+	# print("JACC: ",r.get_similarity_jaccard("hello", "hello"))
+	#r.is_similar_to(word ="hello", count = 10)
+	# print(list(r.ContextVectors.keys())[:10])
+	r.is_similar_to("Animal Farm\n",count=5)
 
+
+	#r.most_similar(count=5)
+	#r.most_similar_dep(count=5)
+	# #print(r.vector_add(words=["the","parks"],isword="hello"))
 
 	print("JSD: ", r.get_similarity_jsd("hello", "hello"))
 	print("Cos: ", r.get_similarity_cos("hello", "hello"))
