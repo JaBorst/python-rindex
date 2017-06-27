@@ -35,8 +35,7 @@ class IndexVector:
             could be done in a similar way janos did in createIndexVectorRandom
             :param context[]:
         """
-        ## summieren des "gekappten" hashs
-        ## wird trotzdem zu groß. 'ein string' ist auch keine lösung @todo
+
         sumOfSeeds = 0.0000
         for word in context:
             sumOfSeeds += string_to_hash(word)
@@ -46,10 +45,27 @@ class IndexVector:
                                                   p=[self.prob_zero, self.prob_plus, self.prob_minus]))
         return self.vec
 
-    def create_index_vector_random(self, context=[]):
-        ## is this the place where you choose the indexes
-        ## or rather how do you save the values?
+    def create_index_vector_from_ordered_context(self, context=[]):
+        """
+            Creates an Index-Vector given a context array with words.
+            __Notes__:
+            seeding with same array -> same value
+            could be done in a similar way janos did in createIndexVectorRandom
+            :param context[]:
+        """
+        # bei der Summation können wir eingentlich den kompletten hex-string nehmen!
+        # danach nicht mehr, da seed der wert sonst für den seed zu hoch wird
+        string_stum = ""
+        for word in context:
+            string_stum += str(int(hashlib.md5(word.encode('utf-8')).hexdigest(), 16))
 
+        np.random.seed(int(string_to_hash(string_stum)))
+        self.vec = sp.csr_matrix(np.random.choice([0, 1, -1], size=(self.dim, 1),
+                                                  p=[self.prob_zero, self.prob_plus, self.prob_minus]))
+        return self.vec
+
+
+    def create_index_vector_random(self, context=[]):
         ## This works because random generates the same sequence of values after
         ## the same seed. After all, I like this method better because we have full
         ## control about the count of -1 and 1s.
@@ -73,11 +89,16 @@ class IndexVector:
 def main():
     iv = IndexVector(100, 3)
     testSentence = ["I", "like", "Parks", "and", "Recreation"]
+    testSentence2 = ["I", "like", "Fun", "and", "Stuff"]
 
-    for word in testSentence + testSentence:
-        iv.create_index_vector_from_context([word])
-        print(word, iv.vec)
-        print()
+    print(iv.create_index_vector_from_ordered_context(testSentence))
+    print()
+    print(iv.create_index_vector_from_ordered_context(testSentence2))
+
+    # for word in testSentence + testSentence:
+    #     iv.create_index_vector_from_ordered_context([word])
+    #     print(word, iv.vec)
+    #     print()
 
         # for i in range(10):
         #     iv.createIndexVectorRandom([testSentence[0]])
