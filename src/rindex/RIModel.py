@@ -43,7 +43,7 @@ class RIModel:
 	index_memory = {}
 	is_sparse = True
 
-	def __init__(self, dim=0, k=0):
+	def __init__(self, dim=1, k=1):
 		self.dim = dim
 		self.k = k
 		self.iv = IndexVec.IndexVector(dim, k)
@@ -461,14 +461,14 @@ def main():
 	r.add_context(["hello", "world", "damn"])
 
 	# r.writeModelToFile()
-	r = RIModel()
-	filename = "/home/jb/git/python-rindex/src/reuters/smallreuters.model"
-	r.load_model_from_file(filename)
+	#r = RIModel()
+	#filename = "/home/jb/git/python-rindex/src/reuters/smallreuters.model"
+	#r.load_model_from_file(filename)
 
 	# keys, matrix = r.to_matrix(to_sparse=True)
 	# for x in matrix:
 	# 	print(x)
-	print(r.ContextVectors["1"])
+	#print(r.ContextVectors["1"])
 	r.truncate(threshold=0.01)
 	r.add_context(["the", "damn", "example"], index=0, mask=[0, 0.5, 0.5])
 	r.add_context(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
@@ -477,8 +477,8 @@ def main():
 	r.add_context(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
 	r.add_context(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
 
-	print(r.ContextVectors["1"])
-	r.to_matrix()
+	#print(r.ContextVectors["1"])
+	#r.to_matrix()
 	#
 	# for key in r.ContextVectors.keys():
 	# 	print(key, r.ContextVectors[key].nonzero())
@@ -501,7 +501,7 @@ def main():
 	# print("JACC: ",r.get_similarity_jaccard("hello", "hello"))
 	#r.is_similar_to(word ="hello", count = 10)
 	# print(list(r.ContextVectors.keys())[:10])
-	r.is_similar_to("Animal Farm\n",count=5)
+	r.is_similar_to("the",count=5)
 
 
 	#r.most_similar(count=5)
