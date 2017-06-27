@@ -10,11 +10,8 @@ from sklearn.neighbors import KDTree
 import numpy as np
 import pickle
 from rindex import IndexVectorSciPy as IndexVec
-
-
-import operator
-# fix_vec = lambda input:[(number,number+0.0001)[number == 0.0] for
-# 						number in input]
+import heapq
+from sklearn.preprocessing import normalize
 import time
 
 def timeit(method):
@@ -32,21 +29,32 @@ def timeit(method):
 
     return timed
 
+import operator
+# fix_vec = lambda input:[(number,number+0.0001)[number == 0.0] for
+# 						number in input]
+import time
+
 class RIModel:
 	"""
 	RIModel - Random IndexVector Model
 	"""
-	ContextVectors = {}
+	# das ist eher ungeschickt bei der paralellen verarbeitung.
+	# -> keine klassenvariable
+	#ContextVectors = {}
 	iv = IndexVec.IndexVector
 	dim = 0
 	k = 0
-	index_memory = {}
+	index_memory = {} # kann so bleiben
 	is_sparse = True
 
 	def __init__(self, dim=1, k=1):
 		self.dim = dim
 		self.k = k
 		self.iv = IndexVec.IndexVector(dim, k)
+		self.ContextVectors = {}
+		self.word_count = {}
+
+
 
 	def write_model_to_file(self, filename = "dump.model"):
 		"""
@@ -56,6 +64,7 @@ class RIModel:
 		print("write model to ",filename)
 		with open(filename, 'wb') as output:
 			pickle.dump(self.ContextVectors, output)
+
 
 	def load_model_from_file(self, filename):
 		"""
@@ -75,6 +84,9 @@ class RIModel:
 			self.is_sparse = False
 			self.dim = len(some_element)
 
+
+
+
 	def add_document(self, context=[]):
 		"""     Takes the Context array as the context of its entries and each element of the array as word
 		"""
@@ -85,7 +97,7 @@ class RIModel:
 								self.ContextVectors[word] = sp.coo_matrix((self.dim, 1))
 			self.ContextVectors[word] += self.iv.create_index_vector_from_context(word)
 
-	def add_context(self, context = [], index = 0, mask = None):
+	def add_context(self, context = [], index = 0):
 		"""Add a self defined Context for a specifix word with index , possibly with a weight mask
 		   default: index = 0 ( the first word in the array ) , if no
 		mask given all contexts are weighted 1
@@ -93,21 +105,15 @@ class RIModel:
 		:param index:
 		:param mask:
 		"""
-		if not mask:
-			mask = [1] * len(context)
-		# für jedes word im Kontext wird dessen IndexVector auf den Kontextvektor
-		# addiert. Der Vektor bezieht sich im default-Fall auf das 1. Wort.
 
-		## maske kann in der funktion darüber implementiert werden
-		## frage: bezieht sich das word im context auf sich selbst?
 
 		if context[index] in self.ContextVectors.keys():
 			pass
 		else:
 			self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
 
-		#rest = context[:index] + context[index+1:]-> should not be done here
-		self.ContextVectors[context[index]] += self.iv.create_index_vector_from_context(context)
+		rest = context[:index] + context[index+1:]#-> should not be done here
+		self.ContextVectors[context[index]] += self.iv.create_index_vector_from_ordered_context(rest)
 
 		# for word, weight in zip(context, mask):
 		# 	if word == context[index]:
@@ -123,7 +129,6 @@ class RIModel:
 		"""     Explicitly Specify the unit of interest and and the units of context.
 				That way you can specify a document as unit of interest and the contained words as "contexts" for example
 		"""
-
 		#check if enough weights present:
 		if len(weights)!=0 and len(context) != len(weights):
 			raise ValueError("Not Matching Array Lengths in addUnit()")
@@ -140,9 +145,14 @@ class RIModel:
 		#add every context unit to the unit of interest (and save to memory for now)
 		for entry in context:
 			if entry not in self.index_memory.keys():
-				#print(entry, " not found. Creating new Vector...")
-				self.index_memory[entry] = self.iv.create_index_vector_from_context([entry])
-			self.ContextVectors[unit] += self.index_memory[entry] * weights[context.index(entry)]
+			 	self.index_memory[entry] = self.iv.create_index_vector_from_context([entry])
+
+			self.ContextVectors[unit] += self.index_memory[entry]*(weights[context.index(entry)])
+
+			#self.ContextVectors[unit] += self.iv.create_index_vector_from_context([entry]) * weights[context.index(entry)]
+
+
+
 
 	def get_similarity_cos(self, word1, word2):
 		"""    Calculate the Cosine-Similarity between the two elements word1 and word2
@@ -153,7 +163,7 @@ class RIModel:
 			 """
 		 # 1- ist bei mir so, kann man aber auch einfach ändern.
 		if self.is_sparse:
-			return 1-spatial.distance.cosine(self.ContextVectors[word1].toarray(),
+			return 1 - spatial.distance.cosine(self.ContextVectors[word1].toarray(),
 											 self.ContextVectors[word2].toarray())
 		else:
 			return 1 - spatial.distance.cosine(self.ContextVectors[word1],
@@ -193,9 +203,9 @@ class RIModel:
 	def get_similarity_jsd(self, word1, word2):
 		""" Jensen Shannon Entropy as Similarity (hence return 1- ...)
 
-		:param word1: 
-		:param word2: 
-		:return: 
+		:param word1:
+		:param word2:
+		:return:
 		"""
 		# Get the Context Vectors
 		cv1 = self.ContextVectors[word1].toarray().transpose()[0]
@@ -256,17 +266,16 @@ class RIModel:
 		except:
 			print("Word not in context")
 			return
-		i = 0
-		sims = {}
-		start = time.time()
-		max_sim=0.0
-		max_word=""
 
+
+		i = 0
+		results = []
 		for key in self.ContextVectors.keys():
 			if key != word:
-				sim = self.get_similarity(word, key, method="cos")
-				sims[key] = sim
-				#print(sim)
+				sim = self.get_similarity(word, key, method=method)
+				heapq.heappush(results, (sim, key))
+			if len(results) > count:
+				heapq.heappop(results)
 
 		if not silent:
 			for x in results:
@@ -278,7 +287,7 @@ class RIModel:
 		"""
 		:param to_sparse:
 		 :param: is_sparse:
-		:return: 
+		:return:
 		"""
 		keys = self.ContextVectors.keys()
 		i = range(len(keys))
@@ -304,8 +313,8 @@ class RIModel:
 		"""
 		should be done !only! with reduced data
 		to enhence search. for ways to search check readTest.py
-		:param method: 
-		:return: 
+		:param method:
+		:return:
 		"""
 		if self.dim > 50:
 			print(">50 dim is not recommended. please reduce first.")
@@ -323,22 +332,21 @@ class RIModel:
 		"""
 
 		if method == "random_projection" or method == "truncated_svd":
-			keys, target_martix = self.to_matrix(to_sparse=True)
+			keys, target_matrix = self.to_matrix(to_sparse=True)
 
 		elif method == "mds" or method == "tsne" or method == "pca":
 			keys, target_matrix = self.to_matrix(to_sparse=False)
 			target_size = 2
 
-		print("Reduce ", target_martix.shape[1], " to ", target_size)
-		self.ContextVectors = {}  # reset dicct
+		print("Reduce ", target_matrix.shape[1], " to ", target_size)
 		if method == "random_projection":
 			"""
 				SPARSE_RANDOM_PROJECTION
 			"""
 			print("using SparseRandomProjection...")
 			from sklearn.random_projection import SparseRandomProjection
-			sparse = SparseRandomProjection(n_components=target_martix)
-			red_data = sparse.fit_transform(target_martix)
+			sparse = SparseRandomProjection(n_components=target_size)
+			red_data = sparse.fit_transform(target_matrix)
 			self.is_sparse = True
 
 		elif method == "truncated_svd":
@@ -348,7 +356,7 @@ class RIModel:
 			from sklearn.decomposition import TruncatedSVD
 			print("using TruncatedSVD...")
 			svd = TruncatedSVD(n_components=target_size, n_iter=10, random_state=42)
-			red_data = svd.fit_transform(target_martix)
+			red_data = svd.fit_transform(target_matrix)
 			print("sd-sum is:\t", svd.explained_variance_ratio_.sum())
 			self.is_sparse = False
 
@@ -361,8 +369,8 @@ class RIModel:
 			seed = np.random.RandomState(seed=3)
 			mds = manifold.MDS(n_components=2, max_iter=10, eps=1e-6, random_state=seed,
 							dissimilarity="euclidean", n_jobs=2, verbose=1)
-			red_data = mds.fit_transform(target_martix)#.embedding_
-			self.is_sparse = True
+			red_data = mds.fit_transform(target_matrix)#.embedding_
+			self.is_sparse = False
 
 		elif method == "tsne":
 			from sklearn.manifold import TSNE
@@ -453,6 +461,7 @@ class RIModel:
 		for i, key in zip(range(len(keys)), keys):
 			self.ContextVectors[key] = sc_target_matrix[i].transpose()
 
+
 def main():
 	"""Main function if the Module gets executed"""
 	dim = 5
@@ -489,13 +498,7 @@ def main():
 	#
 	# for key in r.ContextVectors.keys():
 	# 	print(key, r.ContextVectors[key].nonzero())
-	r.add_context(["the", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["parks", "are", "shitty"], index=0, mask=[0, 0.5, 0.5])
 
-	# r.writeModelToFile()
-	# rmi = RIModel(dim, 3)
-	# filename = "/home/tobias/Dokumente/saved_context_vectors/d100k3.pkl"
-	# rmi.loadModelFromFile(filename)
 
 
 	# print("JSD: ", r.get_similarity_jsd("hello", "parks"))
@@ -514,12 +517,6 @@ def main():
 	#r.most_similar(count=5)
 	#r.most_similar_dep(count=5)
 	# #print(r.vector_add(words=["the","parks"],isword="hello"))
-
-	print("JSD: ", r.get_similarity_jsd("hello", "hello"))
-	print("Cos: ", r.get_similarity_cos("hello", "hello"))
-	print("JACC: ",r.get_similarity_jaccard("hello", "hello"))
-	#r.is_similar_to(word ="hello", thres = 0.1, count = 10)
-	#print(r.vector_add(words=["the","parks"],isword="hello"))
 
 if __name__ == "__main__":
 	main()
