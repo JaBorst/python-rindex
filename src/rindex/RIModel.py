@@ -464,41 +464,37 @@ class RIModel:
 
 def main():
 	"""Main function if the Module gets executed"""
-	# dim = 5
-	# k = 2
-	# r = RIModel(dim, k)
-	# r.add_context(["hello", "world", "damn"])
-	#
-	# r.add_context(["hello", "world", "damn"], index=0)
-	# r.add_context(["hello", "world", "example"], index=0)
-	# r.add_context(["hello", "world", "damn"], index=0)
-	# r.add_context(["hello", "world", "example"], index=0)
-	# r.add_context(["hello", "world", "example"], index=0)
-	# r.add_context(["hello", "damn", "nice"], index=0)
-	#
-	# r.add_context(["the", "damn", "example"], index=0)
-	# r.add_context(["the", "world", "example"], index=0)
-	# r.add_context(["the", "world", "example"], index=0)
-	# r.add_context(["the", "world", "example"], index=0)
-	# r.add_context(["the", "world", "nice"], index=0)
-	# r.add_context(["the", "world", "nice"], index=0)
-	#
-	# r.add_context(["the", "world", "damn"], index=0)
-	# r.add_context(["parks", "are", "shitty"], index=0)
+	dim = 5
+	k = 2
+	r = RIModel(dim, k)
+	r.add_context(["hello", "world", "damn"])
+	r.add_context(["hello", "world", "damn"], index=0)
+	r.add_context(["hello", "world", "example"], index=0)
+	r.add_context(["hello", "world", "damn"], index=0)
+	r.add_context(["hello", "world", "example"], index=0)
+	r.add_context(["hello", "world", "example"], index=0)
+	r.add_context(["hello", "damn", "nice"], index=0)
+	r.add_context(["the", "damn", "example"], index=0)
+	r.add_context(["the", "world", "example"], index=0)
+	r.add_context(["the", "world", "example"], index=0)
+	r.add_context(["the", "world", "example"], index=0)
+	r.add_context(["the", "world", "nice"], index=0)
+	r.add_context(["the", "world", "nice"], index=0)
+	r.add_context(["the", "world", "damn"], index=0)
+	r.add_context(["parks", "are", "shitty"], index=0)
 
 	# r.writeModelToFile()
-	r = RIModel()
-	filename = "/home/jb/git/python-rindex/src/reuters/smallreuters.model"
-	r.load_model_from_file(filename)
+	# r = RIModel()
+	# filename = "/home/jb/git/wikiplots10000nouns.model"
+	#  r.load_model_from_file(filename)
 
 	# keys, matrix = r.to_matrix(to_sparse=True)
 	# for x in matrix:
 	# 	print(x)
-	print(r.ContextVectors["1"])
-	r.truncate(threshold=0.01)
 
-	print(r.ContextVectors["1"])
-	r.to_matrix()
+	#r.truncate(threshold=0.01)
+
+
 	#
 	# for key in r.ContextVectors.keys():
 	# 	print(key, r.ContextVectors[key].nonzero())
@@ -515,7 +511,7 @@ def main():
 	# print("JACC: ",r.get_similarity_jaccard("hello", "hello"))
 	#r.is_similar_to(word ="hello", count = 10)
 	# print(list(r.ContextVectors.keys())[:10])
-	r.is_similar_to("Animal Farm\n",count=5)
+	r.is_similar_to("the",count=5, method="cos")
 
 
 	#r.most_similar(count=5)
