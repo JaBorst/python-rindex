@@ -10,7 +10,24 @@ from sklearn.neighbors import KDTree
 import numpy as np
 import pickle
 from rindex import IndexVectorSciPy as IndexVec
-from t_helper import *
+import heapq
+from sklearn.preprocessing import normalize
+import time
+
+def timeit(method):
+
+    def timed(*args, **kw):
+
+        print("Time Measurement...")
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+
+        print ('%r (%r, %r) %2.2f sec' % \
+              (method.__name__, args, kw, te-ts))
+        return result
+
+    return timed
 
 import operator
 # fix_vec = lambda input:[(number,number+0.0001)[number == 0.0] for
@@ -30,7 +47,7 @@ class RIModel:
 	index_memory = {} # kann so bleiben
 	is_sparse = True
 
-	def __init__(self, dim=0, k=0):
+	def __init__(self, dim=1, k=1):
 		self.dim = dim
 		self.k = k
 		self.iv = IndexVec.IndexVector(dim, k)
@@ -137,7 +154,7 @@ class RIModel:
 			 """
 		 # 1- ist bei mir so, kann man aber auch einfach ändern.
 		if self.is_sparse:
-			return 1-spatial.distance.cosine(self.ContextVectors[word1].toarray(),
+			return 1 - spatial.distance.cosine(self.ContextVectors[word1].toarray(),
 											 self.ContextVectors[word2].toarray())
 		else:
 			return 1 - spatial.distance.cosine(self.ContextVectors[word1],
@@ -181,9 +198,9 @@ class RIModel:
 	def get_similarity_jsd(self, word1, word2):
 		""" Jensen Shannon Entropy as Similarity (hence return 1- ...)
 
-		:param word1: 
-		:param word2: 
-		:return: 
+		:param word1:
+		:param word2:
+		:return:
 		"""
 		# Get the Context Vectors
 		if self.is_sparse:
@@ -248,17 +265,16 @@ class RIModel:
 		except:
 			print("Word not in context")
 			return
-		i = 0
-		start = time.time()
-		max_sim=0.0
-		max_word=""
 
-		sum_time = 0.0
-		for i in range(1):
-			start = time.time()
-			for key in self.ContextVectors.keys():
-				if key != word:
-					sim = self.get_similarity(word, key, method=method)
+
+		i = 0
+		results = []
+		for key in self.ContextVectors.keys():
+			if key != word:
+				sim = self.get_similarity(word, key, method=method)
+				heapq.heappush(results, (sim, key))
+			if len(results) > count:
+				heapq.heappop(results)
 
 		if not silent:
 			for x in results:
@@ -270,7 +286,7 @@ class RIModel:
 		"""
 		:param to_sparse:
 		 :param: is_sparse:
-		:return: 
+		:return:
 		"""
 		keys = self.ContextVectors.keys()
 		i = range(len(keys))
@@ -296,8 +312,8 @@ class RIModel:
 		"""
 		should be done !only! with reduced data
 		to enhence search. for ways to search check readTest.py
-		:param method: 
-		:return: 
+		:param method:
+		:return:
 		"""
 		if self.dim > 50:
 			print(">50 dim is not recommended. please reduce first.")
@@ -447,42 +463,44 @@ class RIModel:
 		for i, key in zip(range(len(keys)), keys):
 			self.ContextVectors[key] = sc_target_matrix[i].transpose()
 
+
 def main():
 	"""Main function if the Module gets executed"""
-	dim = 1000
-	k = 3
+	dim = 5
+	k = 2
 	r = RIModel(dim, k)
 	r.add_context(["hello", "world", "damn"])
+	r.add_context(["hello", "world", "damn"], index=0)
+	r.add_context(["hello", "world", "example"], index=0)
+	r.add_context(["hello", "world", "damn"], index=0)
+	r.add_context(["hello", "world", "example"], index=0)
+	r.add_context(["hello", "world", "example"], index=0)
+	r.add_context(["hello", "damn", "nice"], index=0)
+	r.add_context(["the", "damn", "example"], index=0)
+	r.add_context(["the", "world", "example"], index=0)
+	r.add_context(["the", "world", "example"], index=0)
+	r.add_context(["the", "world", "example"], index=0)
+	r.add_context(["the", "world", "nice"], index=0)
+	r.add_context(["the", "world", "nice"], index=0)
+	r.add_context(["the", "world", "damn"], index=0)
+	r.add_context(["parks", "are", "shitty"], index=0)
 
 	# r.writeModelToFile()
-	r = RIModel()
-	filename = "/home/jb/git/python-rindex/src/reuters/smallreuters.model"
-	r.load_model_from_file(filename)
+	# r = RIModel()
+	# filename = "/home/jb/git/wikiplots10000nouns.model"
+	#  r.load_model_from_file(filename)
 
 	# keys, matrix = r.to_matrix(to_sparse=True)
 	# for x in matrix:
 	# 	print(x)
-	print(r.ContextVectors["1"])
-	r.truncate(threshold=0.01)
-	r.add_context(["the", "damn", "example"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["the", "world", "example"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["the", "world", "nice"], index=0, mask=[0, 0.5, 0.5])
 
-	print(r.ContextVectors["1"])
-	r.to_matrix()
+	#r.truncate(threshold=0.01)
+
+
 	#
 	# for key in r.ContextVectors.keys():
 	# 	print(key, r.ContextVectors[key].nonzero())
-	r.add_context(["the", "world", "damn"], index=0, mask=[0, 0.5, 0.5])
-	r.add_context(["parks", "are", "shitty"], index=0, mask=[0, 0.5, 0.5])
 
-	# r.writeModelToFile()
-	# rmi = RIModel(dim, 3)
-	# filename = "/home/tobias/Dokumente/saved_context_vectors/d100k3.pkl"
-	# rmi.loadModelFromFile(filename)
 
 
 	# print("JSD: ", r.get_similarity_jsd("hello", "parks"))
@@ -495,18 +513,12 @@ def main():
 	# print("JACC: ",r.get_similarity_jaccard("hello", "hello"))
 	#r.is_similar_to(word ="hello", count = 10)
 	# print(list(r.ContextVectors.keys())[:10])
-	r.is_similar_to("Animal Farm\n",count=5)
+	r.is_similar_to("the",count=5, method="cos")
 
 
 	#r.most_similar(count=5)
 	#r.most_similar_dep(count=5)
 	# #print(r.vector_add(words=["the","parks"],isword="hello"))
-
-	print("JSD: ", r.get_similarity_jsd("hello", "hello"))
-	print("Cos: ", r.get_similarity_cos("hello", "hello"))
-	print("JACC: ",r.get_similarity_jaccard("hello", "hello"))
-	#r.is_similar_to(word ="hello", thres = 0.1, count = 10)
-	#print(r.vector_add(words=["the","parks"],isword="hello"))
 
 if __name__ == "__main__":
 	main()
