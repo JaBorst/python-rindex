@@ -247,8 +247,8 @@ class RIModel:
 		if method == "jsd":
 			return self.get_similarity_jsd(word1,word2)
 
-	def is_similar_to(self, word ="", count = 10, method="cos", silent=False):
 	@timeit
+	def is_similar_to(self, word ="", count = 10, method="cos", silent=False):
 		""" Returns words with the least distance to the given word.
 		The combination of threshold and count can be used e.g. for
 		testing to get a small amount of words (and stop after that).
@@ -276,6 +276,7 @@ class RIModel:
 			if len(results) > count:
 				heapq.heappop(results)
 
+		results = heapq.nlargest(count,results)
 		if not silent:
 			for x in results:
 				print(x[1],":\t",x[0])
@@ -311,7 +312,7 @@ class RIModel:
 	def to_tree(self, method='minkowski', leaf_size = 50):
 		"""
 		should be done !only! with reduced data
-		to enhence search. for ways to search check readTest.py
+		to enhence search. for ways to search check test_ri_model.py
 		:param method:
 		:return:
 		"""

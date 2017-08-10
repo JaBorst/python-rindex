@@ -1,16 +1,23 @@
+#
+# __filename__: paratest.py
+#
+# __description__: Basically the same methods as in build_model,
+# but methods are called parallel.
+#
+# __remark__: Mind the different methods to add context vectors!
+#
+# Created by Tobias Wenzel on 08-08-17.
+# Copyright (c) 2017 Tobias Wenzel
+
 import sys
 sys.path.append('../')
 import multiprocessing
-
-import pickle
-from t_helper import get_paths_of_files
-from t_helper import clean_word_seq
-from readTest import get_weight_vector
 from nltk.tokenize import word_tokenize as w_tokenize
 from nltk.tokenize import sent_tokenize as s_tokenize
-from rindex import *
 import os.path
-import time
+
+from t_helper import *
+from rindex import *
 
 """
             BUILD-MODEL-FUNCTIONS
@@ -71,6 +78,7 @@ def bm_on_file(filename, f_number, context_size=2, dim=1500, k=3):
 
 # def merge_model(self, rim2):
 #     """
+#      could actually be added to RIModel
 #     :param path
 #     :return:
 #     """
@@ -106,7 +114,6 @@ def merge_model(rim1, rim2):
         if key not in rim1.ContextVectors.keys():
             rim1.ContextVectors[key] = rim2.ContextVectors[key]
 
-
 def merge_models_in_folder(path="", target_file=""):
     """
     
@@ -139,23 +146,6 @@ def merge_models_in_folder(path="", target_file=""):
     # with open("/home/tobias/Dokumente/saved_context_vectors/newsgroups/word_sim.keys", 'wb') as output:
     #     pickle.dump(keys, output)
 
-def split_text_file(filename="", chunks=1):
-    """
-
-    :param filename:
-    :param chunks:
-    :return:
-    """
-    with open(filename, 'r', encoding='utf-8') as fin:
-        text = fin.readlines()
-    lines_in_new_file = int(len(text) / chunks)
-    index = 0
-    for i in range(chunks):
-        n_filename= os.path.split(filename)[0]+"/"+str(i)
-        with open(n_filename, 'a') as fout:
-            for j in range(lines_in_new_file):
-                fout.write(text[index]+"\n")
-                index+=1
 
 
 def main():

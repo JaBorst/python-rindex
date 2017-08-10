@@ -1,3 +1,9 @@
+#
+# __filename__: clustering.py
+#
+# __description__:
+# __remark__: @deprecated please don't use!
+
 import string
 import collections
 
