@@ -147,7 +147,7 @@ class RIModel:
 			if entry not in self.index_memory.keys():
 			 	self.index_memory[entry] = self.iv.create_index_vector_from_context([entry])
 
-			self.ContextVectors[unit] += self.index_memory[entry]*(weights[context.index(entry)])
+			self.ContextVectors[unit] += self.index_memory[entry] *(weights[context.index(entry)])
 
 			#self.ContextVectors[unit] += self.iv.create_index_vector_from_context([entry]) * weights[context.index(entry)]
 
@@ -176,6 +176,7 @@ class RIModel:
 		"""
 		featureMins = 0
 		featureMax = 0
+		print(type(self.ContextVectors[word1]))
 		cv1 = np.array(self.ContextVectors[word1].toarray().transpose()[0])
 		cv2 =  np.array(self.ContextVectors[word2].toarray().transpose()[0])
 
@@ -238,7 +239,7 @@ class RIModel:
 
 		:param word1:
 		:param word2:
-		:param method: defaults to cosine
+		:param method: defaults to cosinetolist
 		:return:
 		"""
 		if method == "cos":
@@ -248,7 +249,7 @@ class RIModel:
 		if method == "jsd":
 			return self.get_similarity_jsd(word1,word2)
 
-	@timeit
+	#@timeit
 	def is_similar_to(self, word ="", count = 10, method="cos", silent=False):
 		""" Returns words with the least distance to the given word.
 		The combination of threshold and count can be used e.g. for
