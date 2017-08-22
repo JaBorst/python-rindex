@@ -140,7 +140,7 @@ class RIModel:
 		if unit in self.ContextVectors.keys():
 			pass
 		else:
-			self.ContextVectors[unit] = sp.coo_matrix((self.dim, 1))
+			self.ContextVectors[unit] = sp.csr_matrix((self.dim, 1))
 
 		#add every context unit to the unit of interest (and save to memory for now)
 		for entry in context:
@@ -176,9 +176,10 @@ class RIModel:
 		"""
 		featureMins = 0
 		featureMax = 0
-		print(type(self.ContextVectors[word1]))
-		cv1 = np.array(self.ContextVectors[word1].toarray().transpose()[0])
-		cv2 =  np.array(self.ContextVectors[word2].toarray().transpose()[0])
+		#cv1 = np.array(self.ContextVectors[word1].toarray().transpose()[0])
+		#cv2 =  np.array(self.ContextVectors[word2].toarray().transpose()[0])
+		cv1 =  self.ContextVectors[word1]
+		cv2 =  self.ContextVectors[word2]
 
 		pos1 = np.append(np.abs(cv1.clip(max=0)), cv1.clip(min=0))
 		pos2 = np.append(np.abs(cv2.clip(max=0)), cv2.clip(min=0))
