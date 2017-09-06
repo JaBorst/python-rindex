@@ -112,7 +112,7 @@ class RIModel:
 		else:
 			self.ContextVectors[context[index]] = sp.coo_matrix((self.dim, 1))
 
-		rest = context[:index] + context[index+1:]#-> should not be done here
+		rest = context[:index] + context[index+1:]#-> should not be done here (bei jetziger gewichtung egal)
 		self.ContextVectors[context[index]] += self.iv.create_index_vector_from_ordered_context(rest)
 
 
@@ -295,6 +295,7 @@ class RIModel:
 			target_martix = sp.lil_matrix((len(keys), self.dim))
 			for key, i in zip(keys, i):
 				target_martix[i] = self.ContextVectors[key].transpose()
+		# @todo case for to_sparse & not_sparse
 		elif not to_sparse:
 			target_martix = np.zeros((len(keys), self.dim))
 			if self.is_sparse:
@@ -339,7 +340,7 @@ class RIModel:
 
 		elif method == "mds" or method == "tsne" or method == "pca":
 			keys, target_matrix = self.to_matrix(to_sparse=False)
-			target_size = 2
+			#target_size = 2
 
 		print("Reduce ", target_matrix.shape[1], " to ", target_size)
 		if method == "random_projection":
@@ -368,9 +369,8 @@ class RIModel:
 				MDS: ist leider recht ineffizient implementiert...
 			"""
 			from sklearn import manifold
-			print("use mds...good luck with that!")
 			seed = np.random.RandomState(seed=3)
-			mds = manifold.MDS(n_components=2, max_iter=10, eps=1e-6, random_state=seed,
+			mds = manifold.MDS(n_components=target_size, max_iter=10, eps=1e-6, random_state=seed,
 							dissimilarity="euclidean", n_jobs=2, verbose=1)
 			red_data = mds.fit_transform(target_matrix)#.embedding_
 			self.is_sparse = False
@@ -378,7 +378,7 @@ class RIModel:
 		elif method == "tsne":
 			from sklearn.manifold import TSNE
 			print("use tsne")
-			model = TSNE(n_components=2, random_state=0, metric='euclidean')
+			model = TSNE(n_components=target_size, random_state=0, metric='euclidean')
 			np.set_printoptions(suppress=True)
 			red_data = model.fit_transform(target_matrix)
 			self.is_sparse = False
@@ -425,7 +425,7 @@ class RIModel:
 		:param file:
 		:return:
 		"""
-
+		# wir haben doch mehr Kombinationen als keys!
 		if count < 0:
 			count = len(self.ContextVectors.keys())
 		simDic = []
@@ -441,7 +441,8 @@ class RIModel:
 				print("\r%f %%" % (100 * i / size), end="")
 			heapq.heappush(simDic, (self.get_similarity(pair[0], pair[1], method=method) , pair) )
 			if len(simDic) > count:
-				heapq.heappop(simDic)
+				pass
+				#heapq.heappop(simDic)
 		if not silent:
 			for x in simDic:
 				print(":\t", x)
@@ -450,7 +451,7 @@ class RIModel:
 
 	@timeit
 	def truncate(self, threshold=0.1, copy=False):
-		keys, target_matrix = self.to_matrix(to_sparse=True)
+		keys, target_matrix = self.to_matrix(to_sparse=False)
 		from sklearn.preprocessing import MaxAbsScaler
 		m = MaxAbsScaler()
 		sc_target_matrix = m.fit_transform(target_matrix)

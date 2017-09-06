@@ -13,22 +13,21 @@
 import sys
 sys.path.append('../')
 
-import re
-import os
+# import re
+# import os
 import pickle
-import time
 import numpy as np
-import scipy.sparse as sp
-from sklearn.neighbors import KDTree
+# import scipy.sparse as sp
+# from sklearn.neighbors import KDTree
 
 import matplotlib.pyplot as plt
 
-from pathlib import Path
-from os.path import basename
-from t_helper import get_paths_of_files
+# from pathlib import Path
+# from os.path import basename
+# from t_helper import get_paths_of_files
 
 from rindex import *
-
+from t_helper import write_dicct_to_csv
 # used for nice printings
 line_length= 60
 dotted_line = "-"*line_length
@@ -36,6 +35,34 @@ line = "_"*line_length
 colon_line = ":"*line_length
 quarter_space_line = " "*int(line_length/4)
 
+
+def visualize_vecs(rmi, vec_names=[]):
+    """
+    get a graphic representation of cvs (for testing)
+    :param rmi:
+    :param vec_names:
+    :return:
+    """
+    if len(vec_names) == 0:
+        print("no vecs specified. good luck.")
+        vec_names = [key for key in rmi.ContextVectors.keys()]
+        print(vec_names)
+    ivs = []
+    if rmi.is_sparse:
+        for name in vec_names:
+            ivs.append(rmi.ContextVectors[name].toarray())
+    else:
+        for name in vec_names:
+            ivs.append(rmi.ContextVectors[name])
+    x = [i for i in range(ivs[0].shape[0])]
+    f, axarr = plt.subplots(len(vec_names), sharex=True)
+    for i in range(len(vec_names)):
+        axarr[i].plot(x, ivs[i])
+        #axarr[i].set
+        axarr[i].set_title(vec_names[i])
+        axarr[i].set_ylabel('value')
+    axarr[-1].set_xlabel('vec position')
+    plt.show()
 
 
 def search_tree_for_similar(kdt, keys, method="query", n=10, word=""):
@@ -56,6 +83,7 @@ def search_tree_for_similar(kdt, keys, method="query", n=10, word=""):
 
 
 
+#
 # """
 #     TESTING
 #   -> tranlating
@@ -93,65 +121,60 @@ def search_tree_for_similar(kdt, keys, method="query", n=10, word=""):
 
 
 
-def visualize_vecs(rmi, vec_names=[]):
-    if len(vec_names) == 0:
-        return
-    ivs = []
-    for name in vec_names:
-        ivs.append(rmi.ContextVectors[name].toarray())
-    x = [i for i in range(ivs[0].shape[0])]
-    f, axarr = plt.subplots(len(vec_names), sharex=True)
-    for i in range(len(vec_names)):
-        axarr[i].plot(x, ivs[i])
-        axarr[i].set_title(vec_names[i])
-        axarr[i].set_ylabel('value')
-    axarr[-1].set_xlabel('vec position')
-    plt.show()
-
-
 def main():
     dim = 1500
     k = 3
     rmi = RIModel.RIModel(dim, k)
-    context_size = 3
-    print("contextsize ist !!!\t",context_size)
-    rmi.is_sparse = True
+    #rmi.is_sparse = True
+
     print(colon_line)
     print(quarter_space_line,"Random Indexing Model")
     print(colon_line)
-    mode = input("""\t[1]: search \t 2: visualize\n\t 
-    2: load, reduce and build tree\n""") or 0
-    reduction = input("\t[1] do reduce \t [0] don't reduce") or 0
+    mode = input("""\t[0]: compare \t 2: visualize\n\t 
+    3: clustering\t 4: search tree\n""") or 0
+    reduction = input("\ty do reduce \t [n] don't reduce") or 'n'
 
     """
         load models
     """
-    model_filename = "/home/tobias/Dokumente/models/doc-models/books/books-c4.model"
+    model_filename = "/home/tobias/Dokumente/models/doc-models/plato-test.model"
+        #"/home/tobias/Dokumente/models/doc-models/books/no_editorial_stem_both_d1500k3_c4i0.model"
     rmi.load_model_from_file(model_filename)
-    # bei längeren Bücher haut's mir da durch die Decke
-    # -> evtl erst reduzieren und dann truncate?
-    rmi.truncate(threshold=0.1)
-    if int(reduction) == 1:
-        rmi.reduce_dimensions(method="tsne", target_size=2)
+
+    print(rmi.dim)
+    #print(rmi.ContextVectors)
+
+    if reduction == 'y':
+        rmi.reduce_dimensions(method="truncated_svd", target_size=len(rmi.ContextVectors))
+        # rmi.reduce_dimensions(method="tsne", target_size=2)
+
+    # je niedriger, desto mehr Werte bleiben erhalten
+    # rmi.truncate(threshold=0.0)
+    # rmi.is_sparse = False
 
 
-    # print(rmi.ContextVectors)
+
+    #print(rmi.ContextVectors)
     if int(mode) == 0:
-        rmi.is_similar_to(word="shakespeare_romeo_and_juliet", count=5, method="cos",silent=False)
-        #rmi.most_similar(count=-1,method="jsd",silent=False)
+        rmi.is_similar_to(word="plato_apology", count=15, method="cos",silent=False)
+        #is_equal_heap = rmi.most_similar(count=-1,method="jsd",silent=True)
+        #write_dicct_to_csv(is_equal_heap,
+        #                   output_file="/home/tobias/Dokumente/models/doc-models/books/logs/log.csv")
 
     elif int(mode) == 2:
-        vec_names = ['goethe_faust', 'shakespeare_romeo_and_juliet',
-                     'goethe_faust', 'shakespeare_henry_the_fifth']
-        visualize_vecs(rmi, vec_names)
+        vec_names = ['shakespeare_hamlet', 'shakespeare_henry_the_fifth',
+                     #'plato_symposium','goethe_faust', 'tolstoy_war_and_peace', 'tolstoy_anna_karenina',
+                     'melville_moby_dick','austen_emma']
+        visualize_vecs(rmi, vec_names=[])
     elif int(mode) == 3:
         """
             Themen Clustering
         """
+        # mit dim-red und normalize!
         from sklearn.cluster import KMeans
         import collections
-        keys, matrix = rmi.to_matrix(to_sparse=True)
-        km_model = KMeans(n_clusters=4)
+        keys, matrix = rmi.to_matrix(to_sparse=False)
+        km_model = KMeans(n_clusters=7)
         km_model.fit(matrix)
         clustering = collections.defaultdict(list)
         for idx, label in enumerate(km_model.labels_):
@@ -159,37 +182,39 @@ def main():
         for key, value in clustering.items():
             print(key, [keys[idx] for idx in value])
 
-    # if int(mode) == 0 or int(mode)== 2:
-         """
-             Kd-Tree
-         """
-    #     tree_filename = "/home/tobias/Dokumente/models/trees/word_sim_3c.tree"
-    #     leafs_filename = "/home/tobias/Dokumente/models/trees/word_sim_3c.keys"
-    # if int(mode) == 2:
-    #     keys, kdt = rmi.to_tree(method="minkowski", leaf_size=50)
-    #     with open(tree_filename, 'wb') as output:
-    #         pickle.dump(kdt, output)
-    #     with open(leafs_filename, 'wb') as output:
-    #         pickle.dump(keys, output)
-    #
-    # elif int(mode) == 0:
-    #     with open(tree_filename, 'rb') as inputFile:
-    #         kdt = pickle.load(inputFile)
-    #     with open(leafs_filename, 'rb') as inputFile:
-    #         keys = pickle.load(inputFile)
-    #
-    # if int(mode) == 0 or int(mode)== 2:
-    #     while True:
-    #         search_word = input("search for word:\n")
-    #
-    #         try:
-    #             # from nltk.stem.snowball import SnowballStemmer
-    #             # search_word = SnowballStemmer("english",ignore_stopwords=False).stem(search_word)
-    #             search_tree_for_similar(kdt, keys, method="query", n=7, word=search_word)
-    #         except:
-    #             print("word not in contextvectors.")
-    #         if search_word == "stop":
-    #             break
+    elif int(mode) == 4:
+        """
+            Kd-Tree
+        """
+        tree_filename = "/home/tobias/Dokumente/models/trees/word_sim_3c.tree"
+        leafs_filename = "/home/tobias/Dokumente/models/trees/word_sim_3c.keys"
+        build_tree = input("\ty build tree \t [n] don't build tree") or 'n'
+
+        if build_tree == 'y':
+            keys, kdt = rmi.to_tree(method="minkowski", leaf_size=50)
+            with open(tree_filename, 'wb') as output:
+                pickle.dump(kdt, output)
+            with open(leafs_filename, 'wb') as output:
+                pickle.dump(keys, output)
+        elif build_tree == 'n':
+            with open(tree_filename, 'rb') as inputFile:
+                kdt = pickle.load(inputFile)
+            with open(leafs_filename, 'rb') as inputFile:
+                keys = pickle.load(inputFile)
+        else:
+            return
+
+        while True:
+            search_word = input("search for word:\n")
+
+            try:
+                # from nltk.stem.snowball import SnowballStemmer
+                # search_word = SnowballStemmer("english",ignore_stopwords=False).stem(search_word)
+                search_tree_for_similar(kdt, keys, method="query", n=7, word=search_word)
+            except:
+                print("word not in contextvectors.")
+            if search_word == "stop":
+                break
 
 
 if __name__ == '__main__':
@@ -238,89 +263,6 @@ if __name__ == '__main__':
     # print(max_d, max_key)
 
 
-    # with open("/home/tobias/Dokumente/saved_context_vectors/paratest/word_sim.keys", 'rb') as inputFile:
-    #     keys = pickle.load(inputFile)
-    # with open("/home/tobias/Dokumente/saved_context_vectors/paratest/word_sim.tree", 'rb') as inputFile:
-    #     kdt = pickle.load(inputFile)
-    #
-    #for i in range(10):
-
-
-
-
-
-    # depr.
-    # @depr. see paratest
-    # def build_word_sim_model(rmi, path="", context_size=2):
-    #     """
-    #     walks through all of the files 2006-2015 (eng) to build a
-    #     model for word simi.
-    #     :param rmi:
-    #     :param path:
-    #     :param context_size:
-    #     :return:
-    #     """
-    #     files = get_paths_of_files(path, filetype=".txt")
-    #     #files = ["/home/tobias/Dokumente/testdata/eng_news_2015_10K-sentences.txt"]
-    #     for file in files:
-    #         with open(file, 'r', encoding="utf-8") as fin:
-    #             sents = fin.readlines()
-    #         print(file)
-    #         size = len(sents)
-    #         for i,sent in zip(range(len(sents)),sents):
-    #             if i % 100 == 0:
-    #                 print("\r%f %%" % (100 * i / size), end="")
-    #             sent = clean_word_seq(w_tokenize(sent))
-    #             for j in range(len(sent)):
-    #                 context = []
-    #                 for k in range(j, j + context_size):
-    #                     try:
-    #                         context.append(sent[k])
-    #                     except:
-    #                         pass
-    #                 if len(context):
-    #                     try:
-    #                         rmi.add_context(context, index=0)
-    #                     except:
-    #                         pass
-    #             #break
-    #         rmi.write_model_to_file("/home/tobias/Dokumente/saved_context_vectors/small_word_sim_k5.model")
-    #         #break
-
-
-
-
-    # # @depr
-    # def txt_file_by_context(rmi, path =""):
-    #     """
-    #     context ~ file -> same as below but with foldernames as units.
-    #     e.g. newsgroups: sports
-    #     :param rmi:
-    #     :param path:
-    #     :param contextSize:
-    #     :param ext:
-    #     :return:
-    #     """
-    #     files = get_paths_of_files(path, filetype="")
-    #     size = len(files)
-    #     for i,filename in zip(range(len(files)),files):
-    #         if i%10 == 0:
-    #             print("\r%f %%" % (100*i/size), end="")
-    #         raw_text = ""
-    #         try:
-    #             with open(filename, 'r', encoding='utf-8') as fin:
-    #                 raw_text = fin.read()
-    #         except:
-    #             try:
-    #                 with open(filename, 'r', encoding='iso-8859-1') as fin:
-    #                     raw_text = fin.read()
-    #             except:
-    #                 print("error with ", filename)
-    #                 return
-    #         p = Path(filename)
-    #         # setting unit!
-    #         rmi.add_unit(unit=p.parts[-2], context=(clean_word_seq(w_tokenize(raw_text))))
-    #     print("finished news-model")
 
 
 
@@ -358,17 +300,3 @@ if __name__ == '__main__':
     #     rmi.write_model_to_file("year.model")
     #     print("done.")
     #
-    # """
-    #             BUILD-MODEL-FUNCTIONS
-    #             3) Word-(Letter-) Similarity
-    # """
-    # def yet_another_func(rmi, path = ""):
-    #     with open(path, 'r', encoding='utf-8') as fin:
-    #         text = fin.read()
-    #     words = w_tokenize(text)
-    #     for word in words:
-    #         try:
-    #             l_word = [letter.lower() for letter in word if letter.isalpha() and len(word)>0]
-    #             rmi.add_unit(word.lower(), l_word)
-    #         except:
-    #             continue

@@ -20,6 +20,7 @@ from nltk.tokenize import word_tokenize as w_tokenize
 from nltk.tokenize import sent_tokenize as s_tokenize
 from os.path import basename
 import numpy as np
+import scipy.sparse as sp
 
 ## for pdfs
 #import PyPDF2
@@ -180,19 +181,19 @@ def build_doc_vec(filename="", dim=1500, k=3, context_size=3, index=1):
 
     with open(filename, 'r', encoding='utf-8') as fin:
         full_text = fin.read()
+        doc_text = s_tokenize(full_text)
     try:
         base_filename = basename(filename)  # [:-4] ohne file-endung
         print(base_filename)
         rmi = RIModel.RIModel(dim, k)
 
-        doc_text = s_tokenize(full_text)
-        # doc_text = get_n_sents(500)
-        num_sents = len(doc_text)
 
+        num_sents = len(doc_text)
         for z, sentence in zip(range(num_sents), doc_text):
             if z % 100 == 0:
                 print("\r%f %%" % (100 * z / num_sents), end="")
             sent = clean_word_seq(w_tokenize(sentence))
+
             try:
                 for j in range(len(sent)):
                     context = []
@@ -220,7 +221,7 @@ def build_doc_vec(filename="", dim=1500, k=3, context_size=3, index=1):
 
 @log_model
 def build_doc_model(document_rmi, source_path="" \
-                    , context_size=3, dim=1500, k=10, index=1):
+                    , context_size=3, dim=1500, k=3, index=0):
     files = get_paths_of_files(source_path, filetype="")
     size = len(files)
     for i, filename in zip(range(size), files):
@@ -232,7 +233,8 @@ def main():
     dim = 1500
     k = 3
     rmi = RIModel.RIModel(dim, k)
-    context_size = 3
+    context_size = 2
+    index = 0
     rmi.is_sparse = True
     print(colon_line)
     print(quarter_space_line, "Build Random Indexing Model")
@@ -241,15 +243,16 @@ def main():
 
     if int(mode) == 1:
 
-        file_source = "/home/tobias/Downloads/Martin_Luther_Uebersetzung_1912.txt"
-        folder_source = "/home/tobias/Dokumente/testdata/Newspapers/Crown_RAW"
-        doc_model_source_path= "/home/tobias/Dokumente/testdata/doc_modell"
+        # file_source = "/home/tobias/Downloads/Martin_Luther_Uebersetzung_1912.txt"
+        # folder_source = "/home/tobias/Dokumente/testdata/Newspapers/Crown_RAW"
+        doc_model_source_path= "/home/tobias/Dokumente/testdata/plato-test"
         """
             call: build doc model
         """
-        # build_doc_model(source_path=doc_model_source_path \
-        #                            ,context_size=3, k=rmi.k, dim=rmi.dim, index=0\
-        #                 , document_rmi=rmi)
+        build_doc_model(source_path=doc_model_source_path \
+                                   , context_size=context_size,\
+                        k=rmi.k, dim=rmi.dim, index=index\
+                        , document_rmi=rmi)
         """
             call: build word model
         """
@@ -259,17 +262,30 @@ def main():
         #                              contextSize=context_size)
         #analyze_file_by_context(filename=file_source, rmi=rmi, context_size=context_size)
         # needs to save after!
+        rmi.write_model_to_file(filename="/home/tobias/Dokumente/models/doc-models/plato-test.model")
     elif int(mode) == 2:
         """
             Update Doc Model
         """
-        rmi_filename = "/home/tobias/Dokumente/models/doc-models/books/testing_books.model"
+        rmi_filename = "/home/tobias/Dokumente/models/doc-models/books/no_editorial_stem_both_d1500k3_c4i0.model"
         rmi.load_model_from_file(rmi_filename)
-        filename = "/home/tobias/Dokumente/testdata/doc_modell/shakespeare_romeo_and_juliet"
-        rmi.ContextVectors[basename(filename)] = build_doc_vec(filename,
-                                                               dim=rmi.dim, k=rmi.k,
-                                                               context_size=context_size,
-                                                               index=0)
+        new_files = ["/home/tobias/Dokumente/testdata/doc_modell/new/austen_pride_and_prejudice",
+                     "/home/tobias/Dokumente/testdata/doc_modell/new/kafka_the_trial",
+                     "/home/tobias/Dokumente/testdata/doc_modell/new/plato_symposium",
+                     "/home/tobias/Dokumente/testdata/doc_modell/new/plato_the_republic"]
+        for filename in new_files:
+            rmi.ContextVectors[basename(filename)] = build_doc_vec(filename, dim=dim, k=k,
+                                                                   context_size=context_size, index=index)
+
+        """ Author-Vec: Does not seem to work that great."""
+        # author = "austen"
+        # compr = sp.coo_matrix((rmi.dim, 1))
+        # for key in rmi.ContextVectors.keys():
+        #     if author == key.split("_")[0]:
+        #         print(key)
+        #         compr += rmi.ContextVectors[key]
+        #
+        # rmi.ContextVectors[author] = compr
         rmi.write_model_to_file(rmi_filename)
 
 
