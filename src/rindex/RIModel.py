@@ -335,6 +335,7 @@ class RIModel:
 
 		if method == "random_projection" or method == "truncated_svd":
 			keys, target_matrix = self.to_matrix(to_sparse=True)
+			self.ContextVectors = {}  # reset dicct
 
 		elif method == "mds" or method == "tsne" or method == "pca":
 			keys, target_matrix = self.to_matrix(to_sparse=False)

@@ -2,4 +2,5 @@ import sys
 sys.path.append(".")
 import pickle
 from rindex.RIModel import *
-from rivis.rivis import Rivis
+from Visualisation.rivis import Rivis
+from Visualisation.wevis import Wevis 
