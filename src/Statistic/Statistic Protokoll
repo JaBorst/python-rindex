@@ -1,0 +1,43 @@
+Statistic Protokoll
+
+Bei Implementierung:
+
+-> IndexVector erzeugt keine konstante Anzahl an Einträgen ungleich 0
+
+
+
+
+ 3 Statistiken:
+
+ wie viele 1 und 0 ? (Kontrolle)
+
+ Zahlenverteilung gesamt
+ Anteil von 1 und -1 an Einträgen ungleich 0
+
+
+ positions verteilung ? 
+
+ Bei Dimension dim und Gleichverteilung der Position sollte jede Position die Wahrscheinlichkeit 1/dim haben
+
+
+
+ orthogonalität ? 
+
+ Winkel-Verteilung mit Standardabweichung ausrechnung
+ Ideal sollte cos = 0 sein und die Standardabweichung so klein wie möglich.
+
+
+Beobachtungen:
+
+- Interessant: Verteilung der Winkel für höhere k tatsächlich ein bisschen besser (kleinere Standardabweichung)
+
+- Bei höherem k tritt immer mal cos() = 1 auf ??!
+
+- Winkel durchgehend eine Tendenz im Mittel leicht positiv zu sein, übereinstimmend mit der Messung das P(1| !0)  ( also Wahrscheinlichkeit ne 1 zu sehen wenn der Eintrag ungleich 0 ist) immer ein klein wenig größer ist P(-1|!=0) ??
+
+
+
+
+  
+
+
