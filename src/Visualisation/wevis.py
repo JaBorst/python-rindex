@@ -12,7 +12,7 @@ from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.preprocessing import normalize
 from sklearn.neighbors import DistanceMetric
 
-testpoints = ["König","Königin", "Gräfin", "Graf", "Kaiser", "Kaiserin", "Gemahlin", "Gemahl", "Äbtissin","Abt", "Prinz", "Prinzessin", "Mann", "Frau"]
+testpoints = ["König","Königin", "Gräfin", "Graf", "Kaiser", "Kaiserin", "Gemahlin", "Gemahl", "Äbtissin","Abt", "Prinz", "Prinzessin", "Mann", "Frau", "Freund", "Freundin"]
 testpairs = [
 	  ["König","Königin"]
 	, ["Graf", "Gräfin"]
@@ -36,6 +36,9 @@ class Wevis:
 		self.inverse_dictionary = {}
 		self.model = 'name'
 		self.savepath = "./"
+		self.reduced_data= None
+		self.reduced_data_method = ""
+		self.reduced_data_method_metric = ""
 
 	def set_title(self, t=""):
 		self.model = t
@@ -73,54 +76,83 @@ class Wevis:
 		#print(self.dictionary)
 
 	def dim_reduce(self, method = "tsne", target_dim = 2, points = None, metric = "minkoswki"):
+
+		if self.reduced_data != None:
+			if self.reduced_data_method == method and method != "isomap":
+				return self.reduced_data
+			elif method == "isomap" and self.reduced_data_method== method:
+				if self.reduced_data_method_metric == metric:
+					return self.reduced_data
+
+
 		if method == "tsne":
+
 			from sklearn.manifold import TSNE
 			tsne = TSNE(n_components=target_dim, random_state=42)
 			np.set_printoptions(suppress=True)
-			if points == None:
-				return tsne.fit_transform(self.word_vectors[:1000])
-			else:
-				return tsne.fit_transform(points)
 
-		if method == "truncated_svd":
+			self.reduced_data_method_metric = ""
+			self.reduced_data_method = "tsne"
+			if points == None:
+				self.reduced_data = tsne.fit_transform(self.word_vectors[:1000])
+			else:
+				self.reduced_data = tsne.fit_transform(points)
+
+
+		elif method == "truncated_svd":
 			from sklearn.decomposition import TruncatedSVD
 			print("using TruncatedSVD...")
 			svd = TruncatedSVD(n_components=target_dim, n_iter=10, random_state=42)
-			red_data = svd.fit_transform(points)
+			self.reduced_data_method_metric = ""
+			self.reduced_data_method = "truncated_svd"
+			if points == None:
+				self.reduced_data = svd.fit_transform(self.word_vectors[:1000])
+			else:
+				self.reduced_data = svd.fit_transform(points)
 			print("sd-sum is:\t", svd.explained_variance_ratio_.sum())
-			return red_data
 
-		if method == "spectral":
+		elif method == "spectral":
 			from sklearn.manifold import SpectralEmbedding
 			se = SpectralEmbedding(n_components=target_dim, random_state=42)
+			self.reduced_data_method_metric = ""
+			self.reduced_data_method = "spectral"
 			if points == None:
-				return se.fit_transform(self.word_vectors[:1000])
+				self.reduced_data = se.fit_transform(self.word_vectors[:1000])
 			else:
-				return se.fit_transform(points)
+				self.reduced_data = se.fit_transform(points)
 
-		if method == "isomap":
+		elif method == "isomap":
 			from sklearn.manifold.isomap_mod import Isomap
 			i = Isomap(n_components=target_dim, max_iter= 1000, path_method='D', neighbors_algorithm='auto')
+			self.reduced_data_method_metric = metric
+			self.reduced_data_method = "isomap"
 			if points == None:
-				return i.fit_transform(self.word_vectors[:1000],metric=metric)
+				self.reduced_data = i.fit_transform(self.word_vectors[:1000], metric=metric)
 			else:
-				return i.fit_transform(points,metric=metric)
+				self.reduced_data = i.fit_transform(points, metric=metric)
 
-		if method == "lle":
+		elif method == "lle":
 			from sklearn.manifold import LocallyLinearEmbedding
 			lle = LocallyLinearEmbedding(n_components=target_dim, max_iter=1000, neighbors_algorithm='auto')
+			self.reduced_data_method_metric = ""
+			self.reduced_data_method = "lle"
 			if points == None:
-				return lle.fit_transform(self.word_vectors[:1000])
+				self.reduced_data = lle.fit_transform(self.word_vectors[:1000])
 			else:
-				return lle.fit_transform(points)
+				self.reduced_data = lle.fit_transform(points)
 
-		if method == "kpca":
+		elif method == "kpca":
 			from sklearn.decomposition import PCA, KernelPCA
 			kpca = KernelPCA(kernel="rbf", fit_inverse_transform=True, gamma=10)
+			self.reduced_data_method_metric = ""
+			self.reduced_data_method = "kpca"
 			if points == None:
-				return kpca.fit_transform(self.word_vectors[:1000])
+				self.reduced_data = kpca.fit_transform(self.word_vectors[:1000])
 			else:
-				return kpca.fit_transform(points)
+				self.reduced_data = kpca.fit_transform(points)
+
+		return self.reduced_data
+
 
 	def wordnet(self, word = "", method = "tsne", num = 10 ):
 		print("new2")
@@ -187,7 +219,32 @@ class Wevis:
 			points.append(self.word_vectors[self.dictionary[w]])
 		#print(points)
 
-		Y = self.dim_reduce(method=method, target_dim=2,points= points)
+		Y = self.dim_reduce(method=method, target_dim=2, points=points)
+		plt.plot(0,0)
+		for i, w in enumerate(nodes):
+				plt.plot(Y[i, 0], Y[i, 1],'o', color="#134712")
+
+
+		for label, x, y in zip(nodes, Y[:, 0], Y[:, 1]):
+			plt.annotate(label, xy=(x, y), xytext=(0, 0), textcoords='offset points', color ="#ee8d18")
+
+		plt.show()
+
+	def wordlistwhole(self, words = [], method = "tsne", metric = "manhattan"):
+
+		if len(words) == 0:
+			words = testpoints
+
+		nodes = list(set(words))
+		print(nodes)
+		points = []
+		Y = self.dim_reduce(method=method, metric=metric, target_dim=2, points=self.word_vectors)
+		for w in nodes:
+			points.append(Y[self.dictionary[w]])
+			# print(points)
+		#print(points)
+
+
 		plt.plot(0,0)
 		for i, w in enumerate(nodes):
 				plt.plot(Y[i, 0], Y[i, 1],'o', color="#134712")
@@ -261,7 +318,54 @@ class Wevis:
 		if show:
 			plt.show()
 
+	def visualize_vecs(self, vec_names=[]):
+		"""
+		get a graphic representation of cvs (for testing)
+		:param rmi:
+		:param vec_names:
+		:return:
+		"""
+		ivs = []
+		if len(vec_names) == 0:
+			print("no vecs specified. good luck.")
+			for name1, name2 in testpairs[:5]:
+				vec_names.append(name1+"-Mann+Frau")
+				ivs.append(self.vector_add(positive=[name1, "Frau"], negative=["Mann"] ))
 
+				vec_names.append(name2)
+				ivs.append(self.vector_add(positive=[name1]))
+
+
+			print(vec_names)
+
+		else:
+			for name in vec_names:
+				pass
+
+		from matplotlib import collections as matcoll
+
+		x = [i for i in range(ivs[0].shape[0])]
+		f, axarr = plt.subplots(len(vec_names), sharex=True)
+		for i in range(len(vec_names)):
+
+			lines = []
+			for j in range(len(ivs[i])):
+				pair = [(j, 0), (j, ivs[i][j])]
+				print(pair)
+				lines.append(pair)
+
+			linecoll = matcoll.LineCollection(lines)
+			axarr[i].add_collection(linecoll)
+			# axarr[i].ylim([-500, 500])
+			axarr[i].set_title(vec_names[i])
+			axarr[i].set_ylabel('xvalue')
+
+			# plt.ylim([-1, 1])
+		axarr[-1].set_xlabel('vec position')
+		for sub_plot_axis in plt.gcf().get_axes():
+			sub_plot_axis.set_xlim(0,ivs[0].shape[0])
+			sub_plot_axis.set_ylim(-100, 100)
+		plt.show()
 
 	def wordcloud(self, word, num):
 		from wordcloud import WordCloud
