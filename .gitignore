@@ -102,3 +102,9 @@ src/misc/reuters\.topics
 src/visualisation/tmp/
 
 src/tobi-test/
+
+src/Statistic/
+
+src/latex/
+
+src/rindex/check\.py
