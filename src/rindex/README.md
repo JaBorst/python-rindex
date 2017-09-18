@@ -1,9 +1,10 @@
-#python-rindex
-#RIModel
+# python-rindex
+# RIModel
 
 Creates a Random-Indexing-Model. There are function to add contexts for specific tokens and RIModel will build the Model from add
 
 The most important function there are:
+
 ```r = RIModel( d=100, k=40) ``` 
 
 
