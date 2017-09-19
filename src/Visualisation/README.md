@@ -10,7 +10,7 @@ Lädt ein  Word Embedding aus einer Datei. Das Word Embedding soll hier ein mit 
 ```
 dim_reduce( self, method = "tsne", target_dim = 2, points = None, metric = "minkoswki"):
 ```
-Mit dieser Funktion lässt sich die Dimension des Embeddings reduzieren. Dazu kann mit \texttt{points} entweder eine Menge an Punkten gegeben werden, ohne Punkte wird versucht das komplette Embedding zu reduziern ( sehr rechenaufwändig).\\
+Mit dieser Funktion lässt sich die Dimension des Embeddings reduzieren. Dazu kann mit `points` entweder eine Menge an Punkten gegeben werden, ohne Punkte wird versucht das komplette Embedding zu reduziern ( sehr rechenaufwändig).\\
 
 Die zur Verfügung stehenden Methoden sind TSNE, Truncated SVD, Spectral(Laplacian Eigenmaps), Isomap, Locally Linear Embedding (lle), KPCA. Die Implementierung sind aus `scipy` entnommen.
 Isomap wurde modifiziert und kann mit verschiedenen Metriken ausgeführt werden.
@@ -18,7 +18,7 @@ Isomap wurde modifiziert und kann mit verschiedenen Metriken ausgeführt werden.
 ```
 def wordpairs(self, words = testpairs, testaddwords=addWords, method = "tsne", metric = "euclidean", save= False, show = True):
 ```
-Mit dieser Funktion kann man eine Liste von Wortpaare spezifizieren, die erst mit der gegeben \texttt{method} reduziert werden und dann geplottet werden. Zusätzlich kann man ein `dict` übergeben, dass eine Liste von "positive" und eine Liste "negative" Wörter enthält:
+Mit dieser Funktion kann man eine Liste von Wortpaare spezifizieren, die erst mit der gegeben `method` reduziert werden und dann geplottet werden. Zusätzlich kann man ein `dict` übergeben, dass eine Liste von "positive" und eine Liste "negative" Wörter enthält:
 
 ``` testaddwords = {'positive' = ["Frau"], 'negative' = ["Mann"] }
 ```
