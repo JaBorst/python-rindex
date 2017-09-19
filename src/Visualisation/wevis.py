@@ -25,7 +25,7 @@ testpairs = [
 	, ["Partner", "Partnerin"]
 	, ["Stellvertreter", "Stellvertreterin"]
 	][:8]
-
+addWords = {'positive': ["Frau"], 'negative':["Mann"]}
 
 
 class Wevis:
@@ -77,13 +77,15 @@ class Wevis:
 
 	def dim_reduce(self, method = "tsne", target_dim = 2, points = None, metric = "minkoswki"):
 
-		if self.reduced_data != None:
-			if self.reduced_data_method == method and method != "isomap":
-				return self.reduced_data
-			elif method == "isomap" and self.reduced_data_method== method:
-				if self.reduced_data_method_metric == metric:
+		try:
+			if len(self.reduced_data) != 0 :
+				if self.reduced_data_method == method and method != "isomap":
 					return self.reduced_data
-
+				elif method == "isomap" and self.reduced_data_method== method:
+					if self.reduced_data_method_metric == metric:
+						return self.reduced_data
+		except:
+			pass
 
 		if method == "tsne":
 
@@ -207,7 +209,7 @@ class Wevis:
 		# 	plt.plot([k_point[0], v_point[0]], [k_point[1],v_point[1]], color="0.25")
 		plt.show()
 
-	def wordlist(self, words = [], method = "tsne"):
+	def wordlist(self, words = [], method = "tsne", metric = "manhattan"):
 
 		if len(words) == 0:
 			words = testpoints
@@ -219,7 +221,7 @@ class Wevis:
 			points.append(self.word_vectors[self.dictionary[w]])
 		#print(points)
 
-		Y = self.dim_reduce(method=method, target_dim=2, points=points)
+		Y = self.dim_reduce(method=method, target_dim=2, points=points, metric=metric)
 		plt.plot(0,0)
 		for i, w in enumerate(nodes):
 				plt.plot(Y[i, 0], Y[i, 1],'o', color="#134712")
@@ -255,11 +257,19 @@ class Wevis:
 
 		plt.show()
 
-	def wordpairs(self, words = [], method = "tsne", metric = "euclidean", save= False, show = True):
+	def wordpairs(self, words = testpairs, testaddwords=addWords, method = "tsne", metric = "euclidean", save= False, show = True):
+		"""
+		Take a Sample of Wordpairs and visualize them on a 2D-grid. for test you can spacify a vector dictionary that contains vectors to add and subtract from every first member of a Pair and compairs the result to the second member
+		:param words: List of wordpairs like [ ["König", Königin"], ["Graf", "Gräfin"]...]
+		:param testaddwords: Dictionary of words to add and subtract like  testaddwords['positive'] = ["Frau"], testaddwords['negative'] = ["Mann"], so it takes the first word of every pair in words and adds the vector of "Frau" and subtracts thevector of "Mann" and compares the result to the second word in every wordpair
+		:param method: the method for dimension Reduction
+		:param metric: a Metric can only be changed for isomap
+		:param save: if set to True the plot will be saved to disk( you can use savepath(..) and title(..) to set the corresponding values)
+		:param show: if set to True the plot will be shown
+		:return:
+		"""
 
 
-		if len(words) == 0:
-			words = testpairs
 
 		nodes = list(set([x for sublist in  words for x in sublist]))
 
@@ -269,7 +279,7 @@ class Wevis:
 		for w in nodes:
 			points.append(self.word_vectors[self.dictionary[w]])
 		Y = self.dim_reduce(method=method, target_dim=2,points= points, metric =  metric)
-
+		plt.clf()
 		plt.plot(0,0)
 		plt.figure(figsize=( 11.69, 8.27  ))
 		if method == 'isomap':
@@ -294,9 +304,11 @@ class Wevis:
 				v_point = Y[nodes.index(value), :]
 				plt.plot([k_point[0], v_point[0]], [k_point[1], v_point[1]], color="0.75")
 
-				ranking = [x for x, y in
-				           self.glove_similarity_query({'positive': [key, "Frau"], 'negative': ["Mann"]},
-				                                       number=1000)]
+
+
+
+				ranking = [x for x, y in self.glove_similarity_query({'positive': [key]+testaddwords['positive'], 'negative': testaddwords['negative']},number=1000)]
+
 				rank = 0
 				try:
 					rank = ranking.index(value) +1
